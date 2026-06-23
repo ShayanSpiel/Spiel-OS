@@ -276,7 +276,7 @@ curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/i
 4. Wizard walks 10 steps: Welcome → Brand → Identity → ICP → Positioning → Offer → Funnel → Voice → Methodology → Connect
 5. Wizard writes 8 strategy files + brand + .env on Finish, then auto-shuts down
 6. Installer continues: shim at `~/.local/bin/spiel` + IDE adapters at all 3 IDEs (opencode, Cursor, Claude Code — whichever is installed)
-7. Prints `DONE. Run 'spiel /post empty' from any IDE.`
+7. Prints `DONE. From any IDE, type /post to ship a post.`
 
 The install is fully non-blocking — the user never has to type anything into the terminal during the install. They just fill the form in the browser.
 

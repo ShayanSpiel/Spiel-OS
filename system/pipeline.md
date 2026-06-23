@@ -112,7 +112,7 @@ MD ──starts──→ Researcher ──reads session log + ICP──→ Strat
 
 ## Where the deterministic parts run
 
-- `tools/researcher.py` — synthesizes a session log from the opencode DB when `/post empty` finds no session.
+- `tools/researcher.py` — synthesizes a session log from the opencode DB when `/post` (no args) finds no session.
 - `tools/designer.py` — renders PNG banners (Playwright + system Chrome).
 - `tools/editor.py` — runs the 15 mechanical gates against each draft.
 - `tools/publisher/buffer.py` — multi-platform fan-out (X + LinkedIn + Threads).

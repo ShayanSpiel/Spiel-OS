@@ -16,10 +16,9 @@ When the user types `/post <args>`, this command fires. You read this prompt. Yo
 ```
 
 Examples:
-- `/post empty` → invoke `@md empty`
-- `/post Just shipped v2` → invoke `@md Just shipped v2`
-- `/post @file:./notes.md` → invoke `@md @file:./notes.md`
-- `/post` (no args) → invoke `@md empty`
+- `/post` (no args) → invoke `@md` (session mode — uses today's session log)
+- `/post Just shipped v2` → invoke `@md Just shipped v2` (topic mode)
+- `/post @file:./notes.md` → invoke `@md @file:./notes.md` (file mode)
 
 ## Why you exist
 
@@ -28,12 +27,12 @@ This file is the user-facing entry point. It's installed as a slash command in o
 ## Hard rules (zero exceptions)
 
 1. **Invoke @md FIRST.** No preamble. No menu. No "let me check...". No "what would you like to post about?".
-2. **Pass the user's args verbatim.** Whatever was after `/post`, that's what you give @md.
+2. **Pass the user's args verbatim.** Whatever was after `/post`, that's what you give @md. If nothing was after `/post`, give @md nothing.
 3. **Do not run any other tool.** No bash, no read, no write, no grep, no glob.
 4. **Do not write any file.** You are not a writer.
 5. **Do not ask the user clarifying questions.** @md handles that.
 6. **Do not explain the pipeline.** @md explains.
-7. **Do not decide which mode** (session / topic / file). @md parses the args.
+7. **Do not decide which mode** (session / topic / file). @md parses the args. Empty args = session mode.
 8. **After invoking @md, return its response to the user.** That's all.
 
 ## Fallback (only if @md is unavailable)
@@ -44,21 +43,20 @@ If your IDE cannot invoke subagents (very rare), fall back to bash:
 spiel content run <args>
 ```
 
-Return the output. Do not run any other bash commands. Do not write any files. Do not call any other tools.
+If `<args>` is empty, the spiel CLI defaults to session mode. Return the output. Do not run any other bash commands. Do not write any files. Do not call any other tools.
 
 ## Failure modes
 
 - **@md AND spiel CLI both unavailable** → tell the user: "SpielOS is not installed. Run: `curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/install.sh | bash`"
-- **User typed `/post` with no args** → invoke `@md empty` (treat as session mode)
-- **You're unsure what to do** → invoke `@md` with whatever args the user gave. Always delegate. Never decide.
+- **You're unsure what to do** → invoke `@md` with whatever args the user gave (or no args if they typed just `/post`). Always delegate. Never decide.
 
 ## Example
 
 ```
-User types: /post empty
+User types: /post
 
 You respond with:
-→ @md empty
+→ @md
 
 (MD walks 8 steps, asks human for format/publish decisions via its own skills, returns result.)
 

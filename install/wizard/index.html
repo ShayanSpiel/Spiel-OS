@@ -554,7 +554,7 @@
           </svg>
         </div>
         <p class="closer-takeaway" x-text="installResult?.closer_takeaway || 'You stay a builder. The team ships the post.'"></p>
-        <p class="closer-echo" x-text="installResult?.closer_echo || `From any IDE, type /post empty. The 8 roles take it from there.`"></p>
+        <p class="closer-echo" x-text="installResult?.closer_echo || `From any IDE, type /post. The 8 roles take it from there.`"></p>
         <div class="closer-actions">
           <a class="btn btn-primary" href="#" @click.prevent="closeTab()">Close wizard</a>
           <a class="btn btn-ghost" href="#" @click.prevent="go(0)">Start over</a>
@@ -565,7 +565,7 @@
         <h3>What's next</h3>
         <p>From any IDE (opencode, Claude Code, Cursor, MCP), type one of these to start the pipeline:</p>
         <div class="cmd-row">
-          <code class="cmd">/post empty</code>
+          <code class="cmd">/post</code>
           <span class="cmd-desc">turn today's build session into content</span>
         </div>
         <div class="cmd-row">

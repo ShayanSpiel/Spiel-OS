@@ -79,7 +79,7 @@ Subagent must:
 
 ## Subagent entry modes
 
-### Empty `/post`
+### `/post` (no args, session mode)
 
 ```bash
 VAULT=$(spiel --where)
@@ -114,13 +114,13 @@ Same as topic mode but reads topic text from the file.
 spiel content run --session-file <path>
 ```
 
-Same as empty `/post` but uses a pre-existing session file (skip synthesis).
+Same as `/post` (no args) but uses a pre-existing session file (skip synthesis).
 
 ## Hard rules for the subagent
 
 - **NEVER** auto-pick. Wizard prompts = stop and ask.
 - **NEVER** call `engine/engine.py content post` directly — only `spiel content ...`.
 - **NEVER** reference `scripts/engine.py` — that path no longer exists.
-- **NEVER** use an existing today/yesterday session for empty `/post` — always create a fresh file.
+- **NEVER** use an existing today/yesterday session for `/post` (no args) — always create a fresh file.
 - **NEVER** mention internal labels in public drafts (no `S1`, `TOFU`, `L1`, etc.).
 - If blocked, report the exact command/output and current phase. Do not invent menu options.

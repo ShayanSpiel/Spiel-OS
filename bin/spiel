@@ -13,7 +13,7 @@
 # Usage (from anywhere):
 #   spiel --version
 #   spiel --where
-#   spiel /post empty
+#   spiel /post
 #   spiel /post "Just shipped v2"
 #   spiel /post @file:./notes.md
 #   spiel status
@@ -38,8 +38,9 @@ USAGE:
   spiel [--version] [--help] [--where] <command> [args...]
 
 COMMANDS:
-  /post [empty|topic|@file:]
+  /post [topic|@file:]
                          Run the content pipeline end-to-end
+  /post                  (no args = session mode, use today's session log)
   status                 Show current pipeline state
   status --json          Same, JSON output
   init                   Re-run the install wizard
@@ -252,7 +253,7 @@ case "${1:-}" in
     echo "  Invoke it from your IDE: open opencode, Claude Code, Cursor, or any"
     echo "  MCP-compatible agent, then type:"
     echo ""
-    echo "      /post empty           (use today's session log)"
+    echo "      /post                   (use today's session log)"
     echo "      /post \"Just shipped v2\"   (topic mode — ship an announcement)"
     echo "      /post @file:./notes.md    (topic mode from a file)"
     echo ""

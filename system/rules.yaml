@@ -628,7 +628,7 @@ compiler:
     - human
   # Mode routing: when the user passes a topic to /post, the brief.source.kind
   # is "topic" and the compiler uses the topic-mode 6-question sequence
-  # (announce, explain, opinion, etc.). When /post is empty, source.kind is
+  # (announce, explain, opinion, etc.). When /post has no args, source.kind is
   # "session" and the build-to-public 8-step sequence runs.
   # These defaults bias the LLM's selected_meaning axis + funnel routing
   # when running in topic mode. They are hints, not hard constraints.

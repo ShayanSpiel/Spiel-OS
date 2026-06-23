@@ -19,7 +19,7 @@
 #        - Cursor:      ~/.cursor/skills/
 #        - Claude Code: ~/.claude/{agents,skills}
 #
-# On completion: `spiel /post empty` from any IDE works.
+# On completion: `spiel /post` (or just `/post` in any IDE) works.
 
 set -e
 set -o pipefail
@@ -265,7 +265,7 @@ else
   echo "  → URL:  http://localhost:$WIZARD_PORT/"
   echo "  → Fill the 10 steps (about 5 minutes)"
   echo "  → Click 'Finish & install' to write the files"
-  echo "  → Then:  spiel /post empty  (from any IDE)"
+  echo "  → Then:  /post  (from any IDE)"
   echo ""
 
   # The wizard needs a real browser to fill the form. The user opens the
@@ -373,7 +373,7 @@ if [[ $WIZARD_EXIT -eq 0 && -f "$INSTALL_DIR/.env" ]]; then
       ;;
   esac
 
-  note "DONE. Run 'spiel /post empty' from any IDE to ship a post."
+  note "DONE. From any IDE, type /post to ship a post."
   note "To re-run the wizard and update your config:"
   note "  spiel init"
 else

@@ -32,7 +32,7 @@ Identify the source. Classify it. Produce `## researcher` for the Strategist.
 
 The `/post` command from MD:
 
-- `/post empty` → session mode. Find today's session log.
+- `/post` (no args) → session mode. Find today's session log.
 - `/post <topic>` → topic mode. The topic IS the source.
 - `/post @file:<path>` → topic mode from a file.
 - `/post --session-file <path>` → session mode from a specific file.

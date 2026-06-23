@@ -38,16 +38,16 @@ You walk these 8 steps in order. **No skipping. No reordering. No adding steps.*
 
 ### Step 1: Parse the request
 
-Read the user's args:
+Read the user's args (everything after `/post`). The args may be empty.
 
 | User types | Scenario | Source |
 |---|---|---|
-| `/post empty` | session | today's `content/sessions/YYYY-MM-DD.md` |
-| `/post topic: foo` | topic | the literal text `foo` |
+| `/post` (no args) | session | today's `content/sessions/YYYY-MM-DD.md` |
+| `/post foo bar` | topic | the literal text `foo bar` |
 | `/post @file: <path>` | file | the file contents at `<path>` |
-| `/post foo` (anything else) | topic | treat `foo` as the topic text |
+| `/post topic: foo` | topic | the literal text `foo` (explicit prefix) |
 
-If scenario = session AND no session log exists for today → ask the user: "No session log for today. Create a stub, specify a date, or cancel?"
+If args is empty (scenario = session) AND no session log exists for today → ask the user: "No session log for today. Create a stub, specify a date, or cancel?"
 
 Otherwise: proceed to step 2.
 
@@ -209,7 +209,7 @@ Before each step, write to `system/state.json`:
 
 After each step, update the `current_step` field. If the pipeline crashes, you can resume from the last completed step.
 
-## Example flow: `/post empty`
+## Example flow: `/post` (session mode)
 
 ```
 1. Parse: scenario=session, source=today's session log

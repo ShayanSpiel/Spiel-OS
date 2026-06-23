@@ -139,10 +139,10 @@ You orchestrate the SpielOS content pipeline. For each /post invocation:
 
 ---
 
-## The flow for `/post empty` (session mode)
+## The flow for `/post` (session mode)
 
 ```
-1. /post empty in IDE
+1. /post in IDE
 2. LLM (MD agent) reads post.md command: "delegate to @md"
 3. @md runs the 8-step procedure:
    step 1: parse → scenario=session, source=today's session log

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """researcher.py — Researcher role tool. Synthesizes a session log from the opencode DB.
 
-The Researcher subagent uses this when `/post empty` finds no session log
+The Researcher subagent uses this when `/post` (no args) finds no session log
 for today. The tool:
 
 1. Reads the opencode SQLite DB at `~/.local/share/opencode/opencode.db`.

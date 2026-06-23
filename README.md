@@ -28,7 +28,7 @@ The installer:
 4. Waits for you to click **Finish** in the wizard
 5. Installs the `spiel` shim to `~/.local/bin/spiel`
 6. Syncs the 8 role agents + 8 skill stubs to `~/.config/opencode/`
-7. Prints `DONE. Run 'spiel /post empty' from any IDE.`
+7. Prints `DONE. From any IDE, type /post to ship a post.`
 
 Override the install path: `SPIELOS_INSTALL_DIR=/path/to/.spiel bash <(curl ...)`. Override the wizard port: `SPIELOS_WIZARD_PORT=8080`. Override the timeout (default 30 min): `SPIELOS_WIZARD_TIMEOUT=300`.
 
@@ -45,7 +45,7 @@ brew install spielos/tap/spiel
 From any IDE (opencode, Claude Code, Cursor, MCP), type:
 
 ```bash
-/post empty                 # use today's session log
+/post                       # use today's session log (session mode)
 /post "Just shipped v2"     # topic mode — ship an announcement
 /post @file:./notes.md      # topic mode from a file
 ```
