@@ -45,6 +45,7 @@ COMMANDS:
   /post                  (no args = session mode, use today's session log)
   status                 Show current pipeline state
   status --json          Same, JSON output
+  set-vault <path>       Change which vault spiel resolves to (writes global config)
   init                   Re-run the install wizard (rewrites .env, strategy, brand)
   update                 Pull latest tools/install + sync to IDEs
                          (preserves team/, skills/, strategy/, content/, .env, brand.*)
@@ -382,6 +383,32 @@ case "${1:-}" in
     echo "  ✓ Update complete."
     echo "    To re-run setup wizard:  spiel init"
     echo ""
+    ;;
+
+  set-vault)
+    if [[ -z "${2:-}" ]]; then
+      echo "ERROR: usage: spiel set-vault <path>" >&2
+      exit 1
+    fi
+    local target
+    target=$(cd "$2" 2>/dev/null && pwd) || { echo "ERROR: cannot access $2" >&2; exit 1; }
+    if [[ ! -d "$target/team" || ! -f "$target/team/md.md" ]]; then
+      echo "ERROR: $target is not a SpielOS vault (no team/md.md)" >&2
+      exit 1
+    fi
+    # Write global config to point to the new vault
+    mkdir -p "$HOME/.config/spielos"
+    printf 'VAULT_DIR=%s\n' "$target" > "$HOME/.config/spielos/config"
+    # Write .spiel-vault in the new vault
+    printf 'VAULT_DIR=%s\n' "$target" > "$target/.spiel-vault"
+    # Re-copy shim from new vault if it has one
+    if [[ -f "$target/bin/spiel" ]]; then
+      mkdir -p "$(dirname "$SHIM_PATH")"
+      cp "$target/bin/spiel" "$SHIM_PATH"
+      chmod 0755 "$SHIM_PATH"
+    fi
+    echo "  ✓ Vault set to $target"
+    echo "  → Run 'spiel update' to sync tools + IDEs"
     ;;
 
   test)
