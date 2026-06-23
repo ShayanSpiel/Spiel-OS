@@ -34,17 +34,13 @@ Strategist    (COMPILE)
   ↓
 Strategist    (SELECT)
   ↓
-MD            (FORMAT_WIZARD, human)
-  ↓
-Copywriter    (DRAFTING)
+Copywriter    (DRAFTING, format wizard)
   ↓
 Designer      (BANNER)
   ↓
 Editor        (GATE_CHECK)
   ↓
-MD            (PUBLISH_REVIEW, human)
-  ↓
-Publisher     (PUBLISHING)
+Publisher     (PUBLISHING, publish wizard)
   ↓
 Analyst       (ANALYZING_POST)
   ↓

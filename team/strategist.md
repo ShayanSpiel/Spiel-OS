@@ -125,5 +125,5 @@ One status line at the start of every reply: `-> [phase] short status`. Phases: 
 - **`## researcher` missing** → return with `error: no researcher section`; MD reverts to SESSION_CAPTURE.
 - **`source.kind` missing** → default to `session` (per compiler.md §Mode selector).
 - **Empty axes** → fix in place; do not return partial.
-- **No templates in registry for the platform** → return top 0 for that platform; MD skips that platform at FORMAT_WIZARD.
+- **No templates in registry for the platform** → return top 0 for that platform; Copywriter skips that platform at DRAFTING.
 - **ICP world is empty (no `strategy/icp.md`)** → use the writer's voice from `strategy/corpus.md` as the audience; warn in the brief that ICP is uninitialized.

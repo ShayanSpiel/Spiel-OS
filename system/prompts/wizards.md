@@ -1,25 +1,24 @@
 ---
 key: wizards
-title: Wizard banners + subagent entry modes
-audience: subagent (post subagent in IDE)
+title: Wizard banners
+audience: subagent (copywriter, publisher)
 status: canonical
 ---
 
-# Wizard banners + subagent entry modes
+# Wizard banners
 
-These strings are printed by `engine/wizard.py` at human checkpoints. The post subagent must read them, copy them to the user, and WAIT for the user's exact answer.
+These strings are printed at human checkpoints. The subagent that owns the state must read them, relay them to the user via the `question` tool, and WAIT for the user's exact answer.
 
-## Format wizard (FORMAT_WIZARD)
+## Format wizard (Copywriter, DRAFTING)
 
-Engine prints at session/topic mode after the compiler handoff:
+Printed by the Copywriter after the Strategist handoff:
 
 ```
-FORMAT WIZARD — Pick platforms. Subagent MUST ask the user.
+FORMAT WIZARD — Pick platforms. Copywriter MUST ask the user.
 
 ╔════════════════════════════════════════════════════════════╗
 ║  HUMAN CHECKPOINT — DO NOT AUTO-PICK                      ║
-║  Subagent: relay this prompt to the user and WAIT.        ║
-║  Parent / non-TTY mode: pipe the user's exact answer.    ║
+║  Copywriter: relay this prompt to the user and WAIT.      ║
 ╚════════════════════════════════════════════════════════════╝
 
 CORE INSIGHT
@@ -33,32 +32,24 @@ Commands: [x/X] Toggle X   [l] Toggle LinkedIn   [b] Toggle Blog
           [a] Select all/none   [h] Hold   [Enter] Confirm
 ```
 
-Subagent must:
-1. Copy the prompt to the user verbatim.
-2. WAIT for the user's exact answer.
-3. Pipe the answer via `echo "<answer>" | spiel content wizard`.
+Copywriter must:
+1. Relay the prompt to the user via `question` tool.
+2. WAIT for the user's answer.
+3. Parse and write `formats: [...]` to brief frontmatter.
 
-Allowed answer forms: `x`, `linkedin`, `blog`, `x linkedin`, `x,blog`, `1-7`, `all`, `hold`.
+Allowed answer forms: `x`, `linkedin`, `blog`, `x linkedin`, `x,blog`, `all`, `hold`.
 
-On empty answer (parent / non-TTY mode):
+## Publish wizard (Publisher, PUBLISHING)
 
-```
-⚠ Empty answer. The wizard is waiting for the USER's reply.
-  Subagent: relay this prompt to the user, then pipe their answer.
-  Allowed forms: x, linkedin, blog, x linkedin, x,blog, 1-7, all, hold
-```
-
-## Publish wizard (PUBLISH_WIZARD)
-
-Engine prints after mechanical gates pass, per draft:
+Printed by the Publisher after gates pass, per draft:
 
 ```
-PUBLISH WIZARD — Per-draft decision. Subagent MUST ask the user.
+PUBLISH WIZARD — Per-draft decision. Publisher MUST ask the user.
 
 ╔════════════════════════════════════════════════════════════╗
 ║  HUMAN CHECKPOINT — DO NOT AUTO-PICK                      ║
-║  Subagent: show each draft panel and ask the user per    ║
-║  draft. Pipe the user's exact p/h/r/s answers.            ║
+║  Publisher: show each draft panel and ask the user per    ║
+║  draft.                                                    ║
 ╚════════════════════════════════════════════════════════════╝
 
   3 draft(s) ready
@@ -71,56 +62,14 @@ PUBLISH WIZARD — Per-draft decision. Subagent MUST ask the user.
     p / h / r <reason> / s ?
 ```
 
-Subagent must:
-1. Show each panel.
+Publisher must:
+1. Show each panel via `question` tool.
 2. Ask the user per-draft: publish / hold / reject (with reason) / skip.
 3. WAIT for the user's full answer set.
-4. Pipe via `printf "p\nh\nr <reason>\ns\ny\n" | spiel content publish-wizard`.
+4. Write `publish_decisions` to brief frontmatter, dispatch, archive.
 
-## Subagent entry modes
+## Hard rules for subagents
 
-### `/post` (no args, session mode)
-
-```bash
-VAULT=$(spiel --where)
-python3 "$VAULT/engine/session_from_memory.py" \
-    --out "$VAULT/content/sessions/$(date +%Y-%m-%d)-session-$(highest+1).md" \
-    --include-subagents \
-    --max-chars-per-part 2000
-spiel content run --session-file <file>
-```
-
-The subagent synthesizes a session file from opencode DB (preferred) or fallback heuristics. Frontmatter required: `title`, `date`, `session_id`, `tags`, `status: complete`. Body sections required: `## Patterns recognized`, `## Decisions made`, `## What we did`, `## Shipped`, `## Numbers`, `## Lesson`.
-
-### `/post <topic>`
-
-```bash
-spiel content run "<topic>"
-```
-
-Topic IS the source. Do NOT do upfront research. The engine injects voice + templates at DRAFTING.
-
-### `/post @file:<path>`
-
-```bash
-spiel content run @file:<path>
-```
-
-Same as topic mode but reads topic text from the file.
-
-### `/post --session-file <path>`
-
-```bash
-spiel content run --session-file <path>
-```
-
-Same as `/post` (no args) but uses a pre-existing session file (skip synthesis).
-
-## Hard rules for the subagent
-
-- **NEVER** auto-pick. Wizard prompts = stop and ask.
-- **NEVER** call `engine/engine.py content post` directly — only `spiel content ...`.
-- **NEVER** reference `scripts/engine.py` — that path no longer exists.
-- **NEVER** use an existing today/yesterday session for `/post` (no args) — always create a fresh file.
-- **NEVER** mention internal labels in public drafts (no `S1`, `TOFU`, `L1`, etc.).
+- **NEVER** auto-pick. Wizard prompts = stop and ask via `question` tool.
+- **NEVER** reference internal labels in public drafts (no `S1`, `TOFU`, `L1`, etc.).
 - If blocked, report the exact command/output and current phase. Do not invent menu options.

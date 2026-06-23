@@ -229,30 +229,28 @@ Everything else is LLM-driven (the 8 role `.md` files).
 
 ---
 
-## The state machine (12 states)
+## The state machine (10 states)
 
 ```
-IDLE → SESSION_CAPTURE → COMPILE → SELECT → FORMAT_WIZARD → DRAFTING → BANNER
-     → GATE_CHECK → PUBLISH_REVIEW → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
+IDLE → SESSION_CAPTURE → COMPILE → SELECT → DRAFTING → BANNER
+     → GATE_CHECK → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
 ```
 
 The state table is the **single source of truth** at `system/state-machine.md`. No Python enforces it. MD reads the table; nobody else needs to.
 
-Two LLM handoffs and two human pauses are the only non-mechanical steps:
+Human checkpoints are embedded in the role that owns the work:
 
 | # | State | Actor | Action |
 |---|---|---|---|
 | 1 | SESSION_CAPTURE | Researcher | Collect source + classify |
 | 2 | COMPILE | Strategist | 8-step session compiler / 6-question topic compiler |
 | 3 | SELECT | Strategist | Rank templates |
-| 4 | FORMAT_WIZARD | **human** | Pick platforms |
-| 5 | DRAFTING | Copywriter | Write drafts |
-| 6 | BANNER | Designer | Render PNGs |
-| 7 | GATE_CHECK | Editor | Run 15 mechanical + 14 soft |
-| 8 | PUBLISH_REVIEW | **human** | Per-draft p/h/r/s |
-| 9 | PUBLISHING | Publisher | Dispatch via Buffer |
-| 10 | ANALYZING_POST | Analyst | Engagement + re-rank |
-| 11 | COMPLETE_POST | MD | Archive brief |
+| 4 | DRAFTING | Copywriter | Format wizard + write drafts |
+| 5 | BANNER | Designer | Render PNGs |
+| 6 | GATE_CHECK | Editor | Run 15 mechanical + 14 soft |
+| 7 | PUBLISHING | Publisher | Publish wizard + dispatch |
+| 8 | ANALYZING_POST | Analyst | Engagement + re-rank |
+| 9 | COMPLETE_POST | MD | Archive brief |
 
 ---
 

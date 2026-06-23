@@ -51,10 +51,10 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 def test_state_machine() -> None:
     print("\n[1] State machine table")
     sm = (ROOT / "system" / "state-machine.md").read_text()
-    # Must have the 12 states
+    # Must have the 10 states
     expected = [
-        "IDLE", "SESSION_CAPTURE", "COMPILE", "SELECT", "FORMAT_WIZARD",
-        "DRAFTING", "BANNER", "GATE_CHECK", "PUBLISH_REVIEW", "PUBLISHING",
+        "IDLE", "SESSION_CAPTURE", "COMPILE", "SELECT",
+        "DRAFTING", "BANNER", "GATE_CHECK", "PUBLISHING",
         "ANALYZING_POST", "COMPLETE_POST",
     ]
     for s in expected:

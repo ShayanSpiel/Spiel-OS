@@ -43,8 +43,8 @@ def parse_state_table() -> list[dict]:
 
 def test_all_states_present():
     expected = {
-        "IDLE", "SESSION_CAPTURE", "COMPILE", "SELECT", "FORMAT_WIZARD",
-        "DRAFTING", "BANNER", "GATE_CHECK", "PUBLISH_REVIEW", "PUBLISHING",
+        "IDLE", "SESSION_CAPTURE", "COMPILE", "SELECT",
+        "DRAFTING", "BANNER", "GATE_CHECK", "PUBLISHING",
         "ANALYZING_POST", "COMPLETE_POST",
     }
     rows = parse_state_table()

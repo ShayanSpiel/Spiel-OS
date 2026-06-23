@@ -272,7 +272,7 @@ These are LLM-guidance docs read at handoff time. The engine inlines them into t
 | `engine/gates.py:ALL_CHECKS` | `engine/gates.py:validate_draft` | GATE_CHECK state |
 | `system/prompts/compiler.md` | LLM via `engine/prompts_loader` | COMPILE handoff |
 | `system/prompts/leak-guard.md` | LLM via `_data_block_banner` | COMPILE handoff (DATA blocks) |
-| `system/prompts/wizards.md` | LLM via subagent | FORMAT_WIZARD + PUBLISH_WIZARD |
+| `system/prompts/wizards.md` | LLM via subagent | Copywriter (DRAFTING) + Publisher (PUBLISHING) |
 | `strategy/*.md` | LLM via `_print_strategy_injection` | COMPILE + DRAFTING handoff |
 | `templates/registry/viral-templates.yaml` | `engine/selector_keyword.select` | SELECT state |
 | `templates/registry/performance.json` | `engine/ranker.score_template` | ANALYZING_POST |

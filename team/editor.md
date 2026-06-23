@@ -32,7 +32,7 @@ For each draft in `content/queue/`:
 3. Apply the 14 soft gates as LLM review.
 4. Write the verdict (`pass`, `fail`, or `warn`) to the draft's `gates:` frontmatter.
 5. Write the aggregated report to `## editor` in `.brief.md`.
-6. If any draft failed, append `state: DRAFTING` to `## state_history` (bounce to Copywriter). Otherwise append `state: PUBLISH_REVIEW`.
+6. If any draft failed, append `state: DRAFTING` to `## state_history` (bounce to Copywriter). Otherwise append `state: PUBLISHING`.
 
 ## Handoff IN
 
@@ -45,12 +45,12 @@ All drafts in `content/queue/` (with full frontmatter, written by Copywriter). T
 - `gates` — `{ <gate-name>: pass|fail|warn }` for all 15 mechanical gates, per draft.
 - `soft` — `{ <gate-name>: pass|fail|warn }` for all 14 soft gates, per draft.
 - `verdict` — `pass` (all 15 mechanical pass + no soft-fail) / `fail` (any mechanical fail) / `warn` (all pass but some soft warn).
-- `bounce_round` — `1`, `2`, or `3` if verdict is `fail` and the brief has bounced before. After 3, MD moves to PUBLISH_REVIEW with `verdict: warn` regardless.
+- `bounce_round` — `1`, `2`, or `3` if verdict is `fail` and the brief has bounced before. After 3, MD moves to PUBLISHING with `verdict: warn` regardless.
 
 Plus:
 
 - `gates: pass|fail|warn` written to each draft's frontmatter.
-- `## state_history` line (`GATE_CHECK` → `DRAFTING` if fail, `PUBLISH_REVIEW` if pass).
+- `## state_history` line (`GATE_CHECK` → `DRAFTING` if fail, `PUBLISHING` if pass).
 
 ---
 
@@ -117,16 +117,16 @@ if any FAIL:
   │    return to DRAFTING for Copywriter to fix
   │  else:
   │    set verdict: warn
-  │    append `state: PUBLISH_REVIEW` (with warn)
+  │    append `state: PUBLISHING` (with warn)
   ▼
 if all PASS:
   │  run soft gates (LLM review)
   │  if any soft FAIL:
   │    set verdict: warn
-  │    append `state: PUBLISH_REVIEW` (with warn)
+  │    append `state: PUBLISHING` (with warn)
   │  else:
   │    set verdict: pass
-  │    append `state: PUBLISH_REVIEW`
+  │    append `state: PUBLISHING`
 ```
 
 ## Voice
@@ -140,7 +140,7 @@ One status line at the start of every reply: `-> [phase] short status`. Phases: 
 - **NEVER** edit the draft's body. You bounce to Copywriter for fixes.
 - **NEVER** skip the mechanical check. `tools/editor.py` is the only authoritative source for the 15 hard gates.
 - **NEVER** auto-pass a failed gate. The verdict is the verdict.
-- **NEVER** bounce more than 3 times. After 3, MD moves to PUBLISH_REVIEW with `verdict: warn`.
+- **NEVER** bounce more than 3 times. After 3, MD moves to PUBLISHING with `verdict: warn`.
 - **ALWAYS** write `gates:` to the draft's frontmatter.
 - **ALWAYS** include the gate report in `## editor` so the user can see what failed.
 - **ALWAYS** append the next state to `## state_history`.
