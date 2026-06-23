@@ -30,6 +30,7 @@ content/.brief/
 .engine-state
 .content-brief.json
 .env
+.spiel-vault
 .werk/
 .vault/
 

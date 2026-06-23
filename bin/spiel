@@ -54,12 +54,12 @@ COMMANDS:
 
 VAULT_DIR is resolved (first match wins):
   1. $VAULT_DIR env var
-  2. <cwd>/.spiel-vault        (a file containing VAULT_DIR=/abs/path)
-  3. ~/.spielos/               (default home install)
-  4. ~/.spiel/                 (legacy fallback for old installs)
-  5. <shim>/..                 (when shim is bundled at <vault>/bin/spiel)
+  2. walk up from cwd for .spiel-vault  (a file containing VAULT_DIR=/abs/path)
+  3. walk up from cwd for team/md.md    (any parent with the vault marker)
+  4. <shim>/..                          (when shim is bundled at <vault>/bin/spiel)
 
-The shim is path-independent: invoke it from any project, any IDE, any shell.
+The vault is the directory you install into (your project root).
+The shim is path-independent: invoke it from anywhere inside the vault.
 USAGE
   exit 0
 fi
@@ -79,46 +79,37 @@ _resolve_vault() {
     fi
   fi
 
-  # 2. Project-local override.
-  if [[ -z "$candidate" && -f "$PWD/.spiel-vault" ]]; then
-    local override
-    override=$(grep -E '^VAULT_DIR=' "$PWD/.spiel-vault" 2>/dev/null | head -1 | cut -d= -f2- || true)
-    override="${override%\"}"; override="${override#\"}"
-    override="${override%\'}"; override="${override#\'}"
-    if [[ -n "$override" && -d "$override/team" && -f "$override/team/md.md" ]]; then
-      candidate="$override"
-    fi
+  # 2. Walk up from cwd for .spiel-vault
+  if [[ -z "$candidate" ]]; then
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+      if [[ -f "$dir/.spiel-vault" ]]; then
+        local override
+        override=$(grep -E '^VAULT_DIR=' "$dir/.spiel-vault" 2>/dev/null | head -1 | cut -d= -f2- || true)
+        override="${override%\"}"; override="${override#\"}"
+        override="${override%\'}"; override="${override#\'}"
+        if [[ -n "$override" && -d "$override/team" && -f "$override/team/md.md" ]]; then
+          candidate="$override"
+          break
+        fi
+      fi
+      dir=$(dirname "$dir")
+    done
   fi
 
-  # 3. Default home install (file or symlink, must contain team/md.md).
-  if [[ -z "$candidate" && -e "$HOME/.spielos" ]]; then
-    local resolved_home=""
-    if [[ -L "$HOME/.spielos" ]]; then
-      # Follow the symlink. `cd` errors (e.g. target is a regular file) are
-      # silenced — we fall through to option 4 if anything goes wrong.
-      resolved_home=$(cd "$HOME/.spielos" 2>/dev/null && pwd -P 2>/dev/null || echo "")
-    elif [[ -d "$HOME/.spielos" ]]; then
-      resolved_home="$HOME/.spielos"
-    fi
-    if [[ -n "$resolved_home" && -d "$resolved_home/team" && -f "$resolved_home/team/md.md" ]]; then
-      candidate="$resolved_home"
-    fi
+  # 3. Walk up from cwd for team/md.md
+  if [[ -z "$candidate" ]]; then
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+      if [[ -d "$dir/team" && -f "$dir/team/md.md" ]]; then
+        candidate="$dir"
+        break
+      fi
+      dir=$(dirname "$dir")
+    done
   fi
 
-  # 4. Legacy fallback for old ~/.spiel installs.
-  if [[ -z "$candidate" && -e "$HOME/.spiel" ]]; then
-    local resolved_legacy=""
-    if [[ -L "$HOME/.spiel" ]]; then
-      resolved_legacy=$(cd "$HOME/.spiel" 2>/dev/null && pwd -P 2>/dev/null || echo "")
-    elif [[ -d "$HOME/.spiel" ]]; then
-      resolved_legacy="$HOME/.spiel"
-    fi
-    if [[ -n "$resolved_legacy" && -d "$resolved_legacy/team" && -f "$resolved_legacy/team/md.md" ]]; then
-      candidate="$resolved_legacy"
-    fi
-  fi
-
-  # 5. Shim bundled in vault (this file is at <vault>/bin/spiel).
+  # 4. Shim bundled in vault (this file is at <vault>/bin/spiel).
   if [[ -z "$candidate" ]]; then
     local shim_path="${BASH_SOURCE[0]:-$0}"
     # If shim is a symlink, follow it.
@@ -144,40 +135,47 @@ _resolve_vault() {
     fi
   fi
 
-  # Validate (defense in depth — every option above already validated).
+  # Validate
   if [[ -z "$candidate" || ! -d "$candidate/team" || ! -f "$candidate/team/md.md" ]]; then
     echo "ERROR: spiel could not locate the SpielOS vault." >&2
     echo "" >&2
     echo "  Tried (in order):" >&2
     echo "    1. \$VAULT_DIR env var:           ${VAULT_DIR:-<unset>}" >&2
-    if [[ -f "$PWD/.spiel-vault" ]]; then
-      echo "    2. <cwd>/.spiel-vault:           $(cat "$PWD/.spiel-vault" 2>/dev/null | head -3)" >&2
+    local _sv=""
+    local d="$PWD"
+    while [[ "$d" != "/" ]]; do
+      if [[ -f "$d/.spiel-vault" ]]; then _sv="$d/.spiel-vault"; break; fi
+      d=$(dirname "$d")
+    done
+    if [[ -n "$_sv" ]]; then
+      echo "    2. <walk up> .spiel-vault:         $_sv" >&2
     else
-      echo "    2. <cwd>/.spiel-vault:           <not found>" >&2
+      echo "    2. <walk up> .spiel-vault:         <not found>" >&2
     fi
-    if [[ -e "$HOME/.spielos" ]]; then
-      echo "    3. ~/.spielos/                   exists (but invalid)" >&2
+    local _tm=""
+    d="$PWD"
+    while [[ "$d" != "/" ]]; do
+      if [[ -f "$d/team/md.md" ]]; then _tm="$d/team/md.md"; break; fi
+      d=$(dirname "$d")
+    done
+    if [[ -n "$_tm" ]]; then
+      echo "    3. <walk up> team/md.md:           $_tm (invalid)" >&2
     else
-      echo "    3. ~/.spielos/                   <not installed>" >&2
+      echo "    3. <walk up> team/md.md:           <not found>" >&2
     fi
-    if [[ -e "$HOME/.spiel" ]]; then
-      echo "    4. ~/.spiel/  (legacy)           exists (but invalid)" >&2
+    local sd
+    sd=$(cd "$(dirname "$0")" && pwd)
+    if [[ -f "$sd/../team/md.md" ]]; then
+      echo "    4. <shim>/..:                    $sd/.." >&2
     else
-      echo "    4. ~/.spiel/  (legacy)           <not installed>" >&2
+      echo "    4. <shim>/..:                    $sd/.. (not a bundle)" >&2
     fi
-    shim_dir=$(cd "$(dirname "$0")" && pwd)
-    echo "    5. <shim>/..:                    $shim_dir/..  (not a bundle)" >&2
     echo "" >&2
-    echo "  Fix (pick one):" >&2
-    echo "    a) Install SpielOS:" >&2
-    echo "         curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/install.sh | bash" >&2
-    echo "    b) Set VAULT_DIR env var to a vault with team/md.md:" >&2
-    echo "         export VAULT_DIR=/path/to/SpielOS" >&2
-    echo "    c) Drop a .spiel-vault file in your project root with: VAULT_DIR=/abs/path" >&2
+    echo "  Fix: run the installer from the directory you want as your vault:" >&2
+    echo "    curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/install.sh | bash" >&2
     return 1
   fi
 
-  # Normalize to absolute.
   (cd "$candidate" && pwd)
 }
 
@@ -227,6 +225,19 @@ print(f"  → tarball overlay: {copied} files updated (user data preserved)")
 PYEOF
 )
   rm -rf "$tmpdir"
+}
+
+# ── Rewrite vault pointer files (always, on update / install) ────────
+
+_rewrite_vault_pointers() {
+  printf 'VAULT_DIR=%s\n' "$VAULT" > "$VAULT/.spiel-vault"
+  if [[ -f "$VAULT/.env" ]]; then
+    if grep -q '^VAULT_DIR=' "$VAULT/.env" 2>/dev/null; then
+      sed -i '' "s|^VAULT_DIR=.*|VAULT_DIR=$VAULT|" "$VAULT/.env"
+    else
+      printf '\nVAULT_DIR=%s\n' "$VAULT" >> "$VAULT/.env"
+    fi
+  fi
 }
 
 # ── Version / where (vault already resolved) ─────────────────────────
@@ -302,21 +313,12 @@ case "${1:-}" in
   update)
     # Pull the latest tool sources, then sync to IDEs.
     # Preserves your custom team/, skills/, strategy/, content/, .env, brand.*
-    # (just like the install.sh re-install branch with a SKIP list).
-    if [[ ! -d "$VAULT/.git" ]] && [[ ! -f "$VAULT/.spielos-update-marker" ]]; then
-      echo "" >&2
-      echo "  ERROR: $VAULT is not a SpielOS git repo (no .git/)." >&2
-      echo "  Re-run the installer to get a proper install:" >&2
-      echo "    curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/install.sh | bash" >&2
-      exit 1
-    fi
 
     echo ""
     echo "  Updating SpielOS vault at $VAULT"
     echo "  (preserves: team/, skills/, strategy/, content/, .env, system/brand.*)"
     echo ""
 
-    # Path A: vault is a git repo
     if [[ -d "$VAULT/.git" ]] && command -v git >/dev/null 2>&1; then
       echo "  → git pull origin main --ff-only"
       if (cd "$VAULT" && git pull origin main --ff-only 2>&1 | sed 's/^/    /'); then
@@ -326,8 +328,12 @@ case "${1:-}" in
         _update_via_tarball
       fi
     else
+      echo "  → tarball overlay"
       _update_via_tarball
     fi
+
+    # Rewrite vault pointer files (always, to keep them in sync with current path)
+    _rewrite_vault_pointers
 
     echo ""
     echo "  → sync_adapters --install (push to all IDEs)"

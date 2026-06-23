@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DEFAULT_INSTALL_DIR="$HOME/.spielos"
+DEFAULT_INSTALL_DIR="$PWD"
 SHIM_PATH="$HOME/.local/bin/spiel"
 
 echo ""
@@ -27,6 +27,12 @@ if [[ "$bk" =~ ^[Yy]$ ]]; then
     tar -czf "$BACKUP" -C "$INSTALL_DIR" content
     echo "  ✓ Backed up to $BACKUP"
   fi
+fi
+
+# Remove vault pointer file
+if [[ -f "$INSTALL_DIR/.spiel-vault" ]]; then
+  rm -f "$INSTALL_DIR/.spiel-vault"
+  echo "  ✓ Removed $INSTALL_DIR/.spiel-vault"
 fi
 
 # Remove vault

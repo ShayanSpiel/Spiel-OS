@@ -15,23 +15,18 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Shared vault resolver
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _vault import resolve_vault  # noqa: E402
 
 # ─── Vault detection ─────────────────────────────────────────────────────
 
 def find_vault() -> Path:
-    """Find the SpielOS vault root. Walk up from cwd, then check ~/.spielos/, ~/.spiel/ (legacy)."""
-    cwd = Path.cwd()
-    for p in [cwd, *cwd.parents]:
-        if (p / "team" / "md.md").exists() and (p / "system" / "state-machine.md").exists():
-            return p
-    for home_vault in [Path.home() / ".spielos", Path.home() / ".spiel"]:
-        if (home_vault / "team" / "md.md").exists():
-            return home_vault
-    # Fall back to env var
-    env_vault = os.environ.get("VAULT_DIR")
-    if env_vault:
-        return Path(env_vault)
-    return cwd
+    v = resolve_vault()
+    if v is None:
+        return Path.cwd()
+    return v
 
 
 VAULT = find_vault()

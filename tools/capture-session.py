@@ -37,33 +37,18 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+# Shared vault resolver
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _vault import resolve_vault  # noqa: E402
 
 # ─── Vault resolution ─────────────────────────────────────────────────────
-# Shared with bin/spiel. Order: --vault → $VAULT_DIR → ~/.spielos/ → ~/.spiel/ (legacy) → <shim>/..
-# Each candidate is validated; invalid ones fall through.
 
 def find_vault(cli_vault: str | None) -> Path:
-    candidates: list[Path] = []
-    if cli_vault:
-        candidates.append(Path(cli_vault).expanduser().resolve())
-    env_vault = os.environ.get("VAULT_DIR", "").strip()
-    if env_vault:
-        candidates.append(Path(env_vault).expanduser().resolve())
-    candidates.append(Path.home() / ".spielos")
-    candidates.append(Path.home() / ".spiel")
-    # <shim>/.. — the directory this tool lives in
-    candidates.append(Path(__file__).resolve().parent.parent)
-
-    for c in candidates:
-        # For a symlink, resolve to the target before validating
-        if c.is_symlink():
-            try:
-                c = c.resolve()
-            except OSError:
-                continue
-        if c.exists() and c.is_dir() and (c / "team" / "md.md").exists():
-            return c
-    return Path("")  # sentinel: not found
+    v = resolve_vault(cli_vault)
+    if v is None:
+        return Path.cwd()
+    return v
 
 
 # ─── Transcript input ─────────────────────────────────────────────────────
@@ -266,7 +251,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Capture the CURRENT session transcript and save it as the canonical log.",
     )
-    ap.add_argument("--vault", help="Path to the vault root. Default: $VAULT_DIR → ~/.spielos → ~/.spiel → <shim>/..")
+    ap.add_argument("--vault", help="Path to the vault root. Default: $VAULT_DIR → walk up from cwd")
     src = ap.add_mutually_exclusive_group(required=False)  # enforced manually for better error
     src.add_argument("--transcript-stdin", action="store_true",
                      help="Read the transcript from stdin")
@@ -286,7 +271,7 @@ def main() -> int:
     vault = find_vault(args.vault)
     if not vault:
         sys.stderr.write("ERROR: could not locate SpielOS vault.\n")
-        sys.stderr.write("  Tried --vault, $VAULT_DIR, ~/.spielos/, ~/.spiel/, <shim>/..\n")
+        sys.stderr.write("  Tried --vault, $VAULT_DIR, walk up for .spiel-vault / team/md.md\n")
         sys.stderr.write("  Fix: pass --vault /path/to/SpielOS or export VAULT_DIR=...\n")
         return 3
 

@@ -29,6 +29,10 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+# Shared vault resolver
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _vault import resolve_vault  # noqa: E402
 
 # ─── Rules loader ────────────────────────────────────────────────────────
 
@@ -348,15 +352,10 @@ def validate_draft(fm, body, rules, selected_checks=None) -> dict:
 # ─── Vault detection ─────────────────────────────────────────────────────
 
 def find_vault() -> Path:
-    """Find the SpielOS vault root. Walk up from cwd, then check ~/.spielos/, ~/.spiel/ (legacy)."""
-    cwd = Path.cwd()
-    for p in [cwd, *cwd.parents]:
-        if (p / "team" / "md.md").exists() and (p / "system" / "state-machine.md").exists():
-            return p
-    for home_vault in [Path.home() / ".spielos", Path.home() / ".spiel"]:
-        if (home_vault / "team" / "md.md").exists():
-            return home_vault
-    return cwd  # best effort
+    v = resolve_vault()
+    if v is None:
+        return Path.cwd()
+    return v
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────────

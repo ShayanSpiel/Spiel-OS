@@ -7,7 +7,7 @@
 #
 # What this does:
 #   1. Detects arch, python, git, curl/wget
-  # 2. Resolves install path (default ~/.spielos; override with $SPIELOS_INSTALL_DIR)
+  # 2. Resolves install path (default $PWD; override with $SPIELOS_INSTALL_DIR)
 #   3. Downloads the SpielOS vault (git clone preferred, tarball fallback)
 #   4. Starts the local setup wizard at http://localhost:7331
 #   5. Waits for the wizard to write files (user clicks "Finish" in browser)
@@ -17,7 +17,7 @@
 #        - Cursor:      ~/.cursor/skills/
 #        - Claude Code: ~/.claude/{agents,skills}
 #
-# The vault root is ~/.spielos (override with $SPIELOS_INSTALL_DIR).
+# The vault root is $PWD (override with $SPIELOS_INSTALL_DIR).
 # The shim is ~/.local/bin/spiel.
 #
 # On completion: `spiel /post` (or just `/post` in any IDE) works.
@@ -40,7 +40,7 @@ GITHUB_REPO="https://github.com/ShayanSpiel/Spiel-OS.git"
 TARBALL_URL="https://github.com/ShayanSpiel/Spiel-OS/archive/refs/heads/main.tar.gz"
 RAW_INSTALL_URL="https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/install.sh"
 VERSION="${SPIELOS_VERSION:-main}"
-DEFAULT_INSTALL_DIR="${SPIELOS_INSTALL_DIR:-$HOME/.spielos}"
+DEFAULT_INSTALL_DIR="${SPIELOS_INSTALL_DIR:-$PWD}"
 SHIM_PATH="$HOME/.local/bin/spiel"
 WIZARD_PORT="${SPIELOS_WIZARD_PORT:-7331}"
 WIZARD_TIMEOUT="${SPIELOS_WIZARD_TIMEOUT:-1800}"  # 30 min max
@@ -165,9 +165,8 @@ elif [[ -d "$INSTALL_DIR" ]]; then
   if [[ -f "$INSTALL_DIR/team/md.md" ]]; then
     note "Existing SpielOS install detected at $INSTALL_DIR"
   else
-    err "Directory $INSTALL_DIR is not a SpielOS install."
-    err "Pick a different path (set \$SPIELOS_INSTALL_DIR) or remove it first."
-    exit 1
+    note "Installing into existing directory: $INSTALL_DIR"
+    note "  SpielOS files will be added alongside your existing files."
   fi
 elif [[ -e "$INSTALL_DIR" ]]; then
   # Something exists but is not a symlink or directory (regular file, etc.)
@@ -355,14 +354,14 @@ if [[ $WIZARD_EXIT -eq 0 && -f "$INSTALL_DIR/.env" ]]; then
   chmod 0755 "$SHIM_PATH"
   ok "Shim installed: $SHIM_PATH"
 
-  # Create ~/.spielos symlink for shim resolution (if needed)
-  if [[ "$INSTALL_DIR" != "$HOME/.spielos" ]]; then
-    if [[ -L "$HOME/.spielos" ]]; then
-      rm -f "$HOME/.spielos"
-    fi
-    if [[ ! -e "$HOME/.spielos" ]]; then
-      ln -s "$INSTALL_DIR" "$HOME/.spielos"
-      ok "Symlink: $HOME/.spielos → $INSTALL_DIR"
+  # Write vault pointer file (always — keeps .spiel-vault in sync with current path)
+  printf 'VAULT_DIR=%s\n' "$INSTALL_DIR" > "$INSTALL_DIR/.spiel-vault"
+  ok "Vault pointer: $INSTALL_DIR/.spiel-vault"
+
+  # Rewrite VAULT_DIR= line in .env (preserves all other lines)
+  if [[ -f "$INSTALL_DIR/.env" ]]; then
+    if grep -q '^VAULT_DIR=' "$INSTALL_DIR/.env" 2>/dev/null; then
+      sed -i '' "s|^VAULT_DIR=.*|VAULT_DIR=$INSTALL_DIR|" "$INSTALL_DIR/.env"
     fi
   fi
 

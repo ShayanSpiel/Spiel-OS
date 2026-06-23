@@ -37,7 +37,7 @@ def resolve_vault(arg: str | None) -> Path:
     env = os.environ.get("VAULT_DIR")
     if env:
         return Path(env).expanduser().resolve()
-    return (Path.home() / ".spiel").resolve()
+    return Path.cwd().resolve()
 
 
 VAULT = None  # set in main()
@@ -648,15 +648,23 @@ def run_post_install() -> dict:
     else:
         result["shim_already_present"] = shim_path.exists()
 
-    # 2. Create ~/.spiel symlink for shim resolution (if needed)
-    home_symlink = Path.home() / ".spiel"
+    # 2. Write vault pointer file + update .env VAULT_DIR
     try:
-        if home_symlink.is_symlink():
-            home_symlink.unlink()
-        if not home_symlink.exists() and VAULT.resolve() != home_symlink.resolve():
-            home_symlink.symlink_to(VAULT)
+        (VAULT / ".spiel-vault").write_text(f"VAULT_DIR={VAULT}\n", encoding="utf-8")
+        env_file = VAULT / ".env"
+        if env_file.exists():
+            text = env_file.read_text(encoding="utf-8")
+            lines = text.splitlines()
+            found = False
+            for i, line in enumerate(lines):
+                if line.startswith("VAULT_DIR="):
+                    lines[i] = f"VAULT_DIR={VAULT}"
+                    found = True
+                    break
+            if found:
+                env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except Exception as e:
-        result["errors"].append(f"home symlink: {e}")
+        result["errors"].append(f"vault pointer: {e}")
 
     # 3. Generate adapters
     sync_script = VAULT / "tools" / "sync_adapters.py"
@@ -970,7 +978,7 @@ def bootstrap_vault(target: Path, source: Path | None = None) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="SpielOS setup wizard")
     parser.add_argument("--port", type=int, default=7331, help="Port to serve on (default 7331)")
-    parser.add_argument("--target", help="Target vault directory (default: VAULT_DIR or ~/.spiel)")
+    parser.add_argument("--target", help="Target vault directory (default: VAULT_DIR or cwd)")
     parser.add_argument("--no-open", action="store_true", help="Don't auto-open browser")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind (default 127.0.0.1)")
     parser.add_argument("--source", help="Source repo to copy from (default: this serve.py's repo)")

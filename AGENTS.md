@@ -242,6 +242,7 @@ Adding a new state is **one row in the table** + one role file (or a delegation 
 | IDE adapter files | `adapters/` (auto-gen) |
 | Live install | `~/.config/opencode/{agents,skill,commands}/`, `~/.cursor/skills/`, `~/.claude/{agents,skills}/` |
 | Vault shim | `bin/spiel` |
+| Vault pointer | `<vault>/.spiel-vault` (marks the vault root; auto-created on install/update) |
 | Install + wizard | `install/install.sh`, `install/wizard/` |
 | Brief file (active) | `content/.brief.md` |
 | Brief archive | `content/.brief/YYYY-MM-DD-NNN.md` |
@@ -270,12 +271,12 @@ Adding a new state is **one row in the table** + one role file (or a delegation 
 curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/install.sh | bash
 ```
 
-1. Installer downloads the repo (git clone preferred, tarball fallback)
+1. Installer downloads the repo into the **current directory** (your project root becomes the vault, marked by `.spiel-vault`)
 2. Starts the local dashboard at `http://localhost:7331` (auto-opens in browser)
 3. Installer polls for `.install-state.json` (the wizard writes this on Finish)
 4. Wizard walks 10 steps: Welcome → Brand → Identity → ICP → Positioning → Offer → Funnel → Voice → Methodology → Connect
 5. Wizard writes 8 strategy files + brand + .env on Finish, then auto-shuts down
-6. Installer continues: shim at `~/.local/bin/spiel` + IDE adapters at all 3 IDEs (opencode, Cursor, Claude Code — whichever is installed)
+6. Installer continues: writes `<vault>/.spiel-vault` (vault pointer), shim at `~/.local/bin/spiel` + IDE adapters at all 3 IDEs (opencode, Cursor, Claude Code — whichever is installed)
 7. Prints `DONE. From any IDE, type /post to ship a post.`
 
 The install is fully non-blocking — the user never has to type anything into the terminal during the install. They just fill the form in the browser.
@@ -284,7 +285,7 @@ The install is fully non-blocking — the user never has to type anything into t
 
 | Var | Default | What |
 |---|---|---|
-| `SPIELOS_INSTALL_DIR` | `~/.spiel` | Where to install the vault |
+| `SPIELOS_INSTALL_DIR` | `$PWD` | Where to install the vault (default: current directory) |
 | `SPIELOS_WIZARD_PORT` | `7331` | Port for the local dashboard |
 | `SPIELOS_WIZARD_TIMEOUT` | `1800` (30 min) | Max wait for the wizard to finish |
 | `SPIELOS_VERSION` | `main` | Git branch / tag / tarball ref |

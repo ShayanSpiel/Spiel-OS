@@ -1,0 +1,92 @@
+<!doctype html>
+<!--
+  Banner template: notes
+  Sticky-note style for short personal notes (e.g. a meta post about the system
+  itself). Per system/brand.json §banner.templates.notes, this template inherits
+  global tokens; only layout differs. Same :root + placeholder contract as default.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SpielOS note</title>
+<style>
+:root {
+    /* Replaced at render time with brand tokens. */
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: var(--width);
+    height: var(--height);
+    background: var(--bg);
+    font-family: var(--font-heading);
+    overflow: hidden;
+  }
+  .note {
+    position: relative;
+    width: 84%;
+    height: 84%;
+    margin: 8%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 56px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .note::before {
+    content: "Note:";
+    position: absolute;
+    top: 24px;
+    left: 64px;
+    font-family: var(--font-subtitle);
+    font-weight: var(--text-subtitle-weight, 400);
+    font-size: calc(var(--text-subtitle-size, 30px) * 0.7);
+    color: var(--text-subtitle-color, #8a8a8a);
+    letter-spacing: 0.02em;
+  }
+  .title-line {
+    font-family: var(--font-heading);
+    font-weight: var(--text-title-weight, 900);
+    font-size: calc(var(--text-title-size, 120px) * 0.7);
+    line-height: var(--text-title-lh, 1.02);
+    letter-spacing: var(--text-title-letterspacing, -0.05em);
+    color: var(--text-title-color, #ffffff);
+    margin: 0 0 24px 0;
+    text-align: left;
+  }
+  .subtitle-wrapper { margin: 0; }
+  .subtitle-highlight {
+    font-family: var(--font-subtitle);
+    font-weight: var(--text-subtitle-weight, 400);
+    font-size: calc(var(--text-subtitle-size, 30px) * 0.85);
+    line-height: var(--text-subtitle-lh, 1.6);
+    color: var(--text-subtitle-color, #8a8a8a);
+    text-align: left;
+    display: block;
+  }
+  .handle {
+    position: absolute;
+    bottom: 24px;
+    right: 56px;
+    font-family: var(--font-heading);
+    font-weight: var(--text-handle-weight, 500);
+    font-size: var(--text-handle-size, 16px);
+    letter-spacing: var(--text-handle-letterspacing, 0.04em);
+    color: var(--text-handle, #505050);
+  }
+  .handle.align-right  { text-align: right; }
+  .handle.align-center { text-align: right; }
+  .handle.align-left   { text-align: right; }
+</style>
+</head>
+<body>
+  <div class="note">
+    __TITLE_LINES_HTML__
+    __SUBTITLE_HTML__
+  </div>
+  <div class="handle align-right">__HANDLE_TEXT__</div>
+</body>
+</html>

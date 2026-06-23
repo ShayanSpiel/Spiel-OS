@@ -1,0 +1,111 @@
+<!doctype html>
+<!--
+  Banner template: default
+  Loaded by tools/designer.py. The :root block is replaced at render time
+  with tokens from system/brand.json. The body placeholders below
+  (__TITLE_LINES_HTML__, __SUBTITLE_HTML__, __ICON_SVG__, __HANDLE_TEXT__)
+  are replaced per-draft. Class names "position-X" and "align-X" are
+  replaced based on icon_position_x and text_handle_align tokens.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SpielOS banner</title>
+<style>
+:root {
+    /* Replaced at render time with brand tokens. */
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: var(--width);
+    height: var(--height);
+    background: var(--bg);
+    font-family: var(--font-heading);
+    overflow: hidden;
+  }
+  .banner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .bg-icon {
+    position: absolute;
+    top: var(--icon-position-y, center);
+    left: var(--icon-position-x, center);
+    transform: translate(-50%, -50%) rotate(var(--icon-rotate, 0deg)) translate(var(--icon-offset-x, 0), var(--icon-offset-y, 0));
+    color: var(--icon-color, #2a2a2a);
+    opacity: var(--icon-opacity, 0.55);
+    width: var(--icon-size, 660px);
+    height: var(--icon-size, 660px);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .bg-icon svg { width: 100%; height: 100%; display: block; }
+  .bg-icon.position-left  { left: 25%;  }
+  .bg-icon.position-right { left: 75%;  }
+  .bg-icon.position-center { left: 50%; }
+
+  .content {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    padding: var(--content-padding, 60px 80px 100px);
+    width: var(--content-width, 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: var(--text-align, center);
+    text-align: var(--text-align, center);
+    z-index: 2;
+  }
+  .title-line {
+    font-family: var(--font-heading);
+    font-weight: var(--text-title-weight, 900);
+    font-size: var(--text-title-size, 120px);
+    line-height: var(--text-title-lh, 1.02);
+    letter-spacing: var(--text-title-letterspacing, -0.05em);
+    color: var(--text-title-color, #ffffff);
+    text-shadow: var(--text-title-shadow, none);
+    margin: 0;
+    padding: 0;
+  }
+  .subtitle-wrapper {
+    margin-top: 24px;
+  }
+  .subtitle-highlight {
+    font-family: var(--font-subtitle);
+    font-weight: var(--text-subtitle-weight, 400);
+    font-size: var(--text-subtitle-size, 30px);
+    line-height: var(--text-subtitle-lh, 1.6);
+    letter-spacing: var(--text-subtitle-letterspacing, 0);
+    color: var(--text-subtitle-color, #8a8a8a);
+    background: var(--text-subtitle-highlight, transparent);
+  }
+  .handle {
+    position: absolute;
+    bottom: var(--text-handle-bottom, 40px);
+    left: 0; right: 0;
+    font-family: var(--font-heading);
+    font-weight: var(--text-handle-weight, 500);
+    font-size: var(--text-handle-size, 16px);
+    letter-spacing: var(--text-handle-letterspacing, 0.04em);
+    color: var(--text-handle, #505050);
+    z-index: 2;
+  }
+  .handle.align-left   { text-align: left;   padding-left: 80px; }
+  .handle.align-right  { text-align: right;  padding-right: 80px; }
+  .handle.align-center { text-align: center; }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <div class="bg-icon position-center">__ICON_SVG__</div>
+    <div class="content">
+      __TITLE_LINES_HTML__
+      __SUBTITLE_HTML__
+    </div>
+    <div class="handle align-center">__HANDLE_TEXT__</div>
+  </div>
+</body>
+</html>

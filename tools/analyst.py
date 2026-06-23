@@ -30,22 +30,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+# Shared vault resolver
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _vault import resolve_vault  # noqa: E402
 
 # ─── Vault detection ─────────────────────────────────────────────────────
 
 def find_vault() -> Path:
-    cwd = Path.cwd()
-    for p in [cwd, *cwd.parents]:
-        if (p / "team" / "md.md").exists() and (p / "system" / "state-machine.md").exists():
-            return p
-    for home_vault in [Path.home() / ".spielos", Path.home() / ".spiel"]:
-        if (home_vault / "team" / "md.md").exists():
-            return home_vault
-    import os
-    env_vault = os.environ.get("VAULT_DIR")
-    if env_vault:
-        return Path(env_vault)
-    return cwd
+    v = resolve_vault()
+    if v is None:
+        return Path.cwd()
+    return v
 
 
 VAULT = find_vault()

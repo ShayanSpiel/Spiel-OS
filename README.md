@@ -23,14 +23,16 @@ curl -fsSL https://raw.githubusercontent.com/ShayanSpiel/Spiel-OS/main/install/i
 
 The installer:
 1. Detects arch, python, git, curl/wget
-2. Downloads the vault to `~/.spielos` (git clone preferred, tarball fallback)
+2. Downloads the vault to the **current directory** (your project root becomes the vault)
 3. Starts the setup wizard at `http://localhost:7331` (auto-opens in your browser)
 4. Waits for you to click **Finish** in the wizard
 5. Installs the `spiel` shim to `~/.local/bin/spiel`
 6. Syncs the 8 role agents + 5 skills to `~/.config/opencode/`, `~/.claude/`, `~/.cursor/`
 7. Prints `DONE. From any IDE, type /post to ship a post.`
 
-Override the install path: `SPIELOS_INSTALL_DIR=/path/to/.spielos bash <(curl ...)`. Override the wizard port: `SPIELOS_WIZARD_PORT=8080`. Override the timeout (default 30 min): `SPIELOS_WIZARD_TIMEOUT=300`.
+Override the install path: `SPIELOS_INSTALL_DIR=/some/path bash <(curl ...)`. Override the wizard port: `SPIELOS_WIZARD_PORT=8080`. Override the timeout (default 30 min): `SPIELOS_WIZARD_TIMEOUT=300`.
+
+The vault is the directory you ran the installer from. A `.spiel-vault` file marks it. `cd` anywhere inside the vault and `spiel` finds it automatically (walks up the directory tree).
 
 Brew (when published):
 

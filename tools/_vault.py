@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""tools/_vault.py — Shared vault resolver for SpielOS tools.
+
+Resolution order (matching bin/spiel):
+  1. --vault CLI arg (if provided)
+  2. $VAULT_DIR env var
+  3. Walk up from cwd for .spiel-vault file
+  4. Walk up from cwd for team/md.md
+
+Returns None if no vault found (caller falls back to cwd or errors).
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+
+def resolve_vault(cli_vault: str | None = None) -> Path | None:
+    # 1. CLI arg
+    if cli_vault:
+        p = Path(cli_vault).expanduser().resolve()
+        if (p / "team" / "md.md").is_file():
+            return p
+
+    # 2. $VAULT_DIR env var
+    env_vault = os.environ.get("VAULT_DIR", "").strip()
+    if env_vault:
+        p = Path(env_vault).expanduser().resolve()
+        if (p / "team" / "md.md").is_file():
+            return p
+
+    cwd = Path.cwd().resolve()
+
+    # 3. Walk up for .spiel-vault
+    for parent in [cwd] + list(cwd.parents):
+        spiel_vault = parent / ".spiel-vault"
+        if spiel_vault.is_file():
+            try:
+                text = spiel_vault.read_text(encoding="utf-8").strip()
+                for line in text.splitlines():
+                    if line.startswith("VAULT_DIR="):
+                        override = line.split("=", 1)[1].strip().strip("\"'")
+                        p = Path(override).expanduser().resolve()
+                        if (p / "team" / "md.md").is_file():
+                            return p
+                        break
+            except Exception:
+                pass
+
+    # 4. Walk up for team/md.md
+    for parent in [cwd] + list(cwd.parents):
+        if (parent / "team" / "md.md").is_file():
+            return parent
+
+    return None

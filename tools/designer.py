@@ -34,9 +34,11 @@ import tempfile
 import webbrowser
 from pathlib import Path
 
-
+# Shared vault resolver
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _vault import resolve_vault  # noqa: E402
 SCRIPT_DIR = Path(__file__).resolve().parent
-VAULT_DEFAULT = SCRIPT_DIR.parent
 
 TEMPLATES_DIR = "banner-templates"
 BANNERS_DIR = "banners"
@@ -94,7 +96,10 @@ REQUIRED_TOKENS = frozenset(
 
 
 def _vault() -> Path:
-    return Path(os.environ.get("VAULT_DIR", VAULT_DEFAULT))
+    v = resolve_vault()
+    if v is None:
+        return SCRIPT_DIR.parent  # tools/.. = vault root (best effort)
+    return v
 
 
 # ─── Loaders ──────────────────────────────────────────────────────────────
