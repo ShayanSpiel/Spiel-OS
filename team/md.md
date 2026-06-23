@@ -70,14 +70,16 @@ Read `{vault_root}/content/.brief.md`. If the last `## state_history` entry is n
 
 Print: `MD — /post request received`
 
-Determine `{scenario}` and `{source}` from the conversation context:
+The slash command (`team/post.md`) passes only the text the user typed AFTER `/post`. The IDE may also pre-fill your own system prompt (this file) before the user's arg — ignore any boilerplate. Focus on the actual user arg:
 
-| User typed | scenario | source |
+| User arg (text after `/post`) | scenario | source |
 |---|---|---|
-| `/post` (no args, empty) | `session` | `current_conversation` |
-| `/post <text>` | `topic` | `<text>` |
-| `/post @file:<path>` | `file` | `<path>` |
-| `/post topic: <text>` | `topic` | `<text>` |
+| empty (no arg) | `session` | `current_conversation` |
+| `<text>` | `topic` | `<text>` |
+| `@file:<path>` | `file` | `<path>` |
+| `topic: <text>` | `topic` | `<text>` |
+
+If the user arg contains your own role file text ("name: md", "Marketing Director", "You are @md" — i.e. the IDE leaked your system prompt), strip the boilerplate and re-parse. If nothing remains after stripping, treat it as session mode.
 
 Print: `MD — <scenario> mode, source: <source>`
 
