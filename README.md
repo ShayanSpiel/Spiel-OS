@@ -5,10 +5,9 @@
 SpielOS turns one `/post` command into platform-native content for X, LinkedIn, and your blog. The team — Managing Director, Strategist, Researcher, Copywriter, Editor, Designer, Publisher, Analyst — is just `.md` files. The deterministic parts (banner design, publishing, quality gates) are tiny Python tools. Everything else is LLM-orchestrated markdown.
 
 ```
-WORK SESSION → [Strategist] → [Copywriter] → [Editor] → [Publisher] → [Analyst]
-                            → [Designer]  →  ↑             ↑
-                                                                  │
-                                       you stay a builder ────────┘
+IDLE → [Researcher] → [Strategist] → [Copywriter] → [Designer] → [Editor] → [Publisher] → [Analyst] → COMPLETE
+                 ↘  ↙                  ↕ user             ↑           ↕ user
+               MD delegates        format wizard     gates check   publish/hold/reject
 ```
 
 ---
@@ -142,7 +141,7 @@ spielos/
 │   └── analyst.md         # engagement + re-rank
 │
 ├── system/                # the playbook
-│   ├── state-machine.md   # the 12-state table (single source of truth)
+│   ├── state-machine.md   # the 10-state table (single source of truth)
 │   ├── brief-schema.md    # .brief.md template (handoff file)
 │   ├── pipeline.md        # role ↔ state map
 │   ├── brand.md           # brand tokens (human-readable)

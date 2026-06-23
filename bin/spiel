@@ -206,7 +206,7 @@ _SPielos_SKIP_DIRS="team skills strategy content"
 _SPielos_SKIP_FILES=".env system/brand.md system/brand.json"
 
 _update_via_tarball() {
-SPIELOS_REPO="${SPIELOS_REPO:-spielos/spielos}"
+SPIELOS_REPO="${SPIELOS_REPO:-ShayanSpiel/Spiel-OS}"
   local tarball="${TARBALL_URL:-https://github.com/$SPIELOS_REPO/archive/refs/heads/main.tar.gz}"
   local tmpdir
   tmpdir=$(mktemp -d) || { echo "  ⚠ mktemp failed" >&2; return 1; }
