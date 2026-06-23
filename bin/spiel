@@ -237,6 +237,9 @@ _rewrite_vault_pointers() {
     else
       printf '\nVAULT_DIR=%s\n' "$VAULT" >> "$VAULT/.env"
     fi
+    echo "  ✓ VAULT_DIR → $VAULT (in .env + .spiel-vault)"
+  else
+    echo "  ✓ VAULT_DIR → $VAULT (in .spiel-vault only)"
   fi
 }
 

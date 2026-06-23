@@ -1,27 +1,9 @@
 # Pipeline
 
-The content pipeline is a 12-state machine, executed by 8 roles, coordinated by **MD**.
+The content pipeline is a 10-state machine, executed by 8 roles, coordinated by **MD**.
 
 ```
-                        ┌──── human pause (FORMAT_WIZARD)
-                        │
-                        ▼
-IDLE → SESSION_CAPTURE → COMPILE → SELECT ─→ MD ─→ DRAFTING → BANNER
-                                                              │
-                                                              ▼
-                              IDLE ←─ MD (held)  ←─ PUBLISH_REVIEW
-                                ▲                                │
-                                │ human pause                    ▼
-                                └──── IDLE  ←── MD (rejected)  PUBLISHING
-                                                                │
-                                                                ▼
-                                                       ANALYZING_POST
-                                                                │
-                                                                ▼
-                                                       COMPLETE_POST
-                                                                │
-                                                                ▼
-                                                              IDLE
+IDLE → SESSION_CAPTURE → COMPILE → SELECT → DRAFTING → BANNER → GATE_CHECK → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
 ```
 
 ## The roles, in order
@@ -32,14 +14,12 @@ IDLE → SESSION_CAPTURE → COMPILE → SELECT ─→ MD ─→ DRAFTING → BA
 | 1 | SESSION_CAPTURE | **Researcher** | LLM + tool | `## researcher` |
 | 2 | COMPILE | **Strategist** | LLM | `## strategist.core_insight` + 6 axes |
 | 3 | SELECT | **Strategist** | LLM | `## strategist.template_selection` |
-| 4 | FORMAT_WIZARD | **MD** (human) | LLM + human | `formats: [...]` |
-| 5 | DRAFTING | **Copywriter** | LLM | `## copywriter` + draft files |
-| 6 | BANNER | **Designer** | LLM + `tools/designer.py` | `## designer` + PNG files |
-| 7 | GATE_CHECK | **Editor** | LLM + `tools/editor.py` | `## editor.verdict` |
-| 8 | PUBLISH_REVIEW | **MD** (human) | LLM + human | `## publisher.posted` (when publish) |
-| 9 | PUBLISHING | **Publisher** | LLM + `tools/publisher/*.py` | `## publisher` |
-| 10 | ANALYZING_POST | **Analyst** | LLM + `tools/analyst.py` | `## analyst` |
-| 11 | COMPLETE_POST | **MD** | LLM | `.brief.md` archived |
+| 4 | DRAFTING | **Copywriter** | LLM + human | `## copywriter` + draft files + `formats` |
+| 5 | BANNER | **Designer** | LLM + `tools/designer.py` | `## designer` + PNG files |
+| 6 | GATE_CHECK | **Editor** | LLM + `tools/editor.py` | `## editor.verdict` |
+| 7 | PUBLISHING | **Publisher** | LLM + human + tools | `## publisher` + posted/rejected files |
+| 8 | ANALYZING_POST | **Analyst** | LLM + `tools/analyst.py` | `## analyst` |
+| 9 | COMPLETE_POST | **MD** | LLM | `.brief.md` archived |
 
 ---
 
@@ -47,46 +27,45 @@ IDLE → SESSION_CAPTURE → COMPILE → SELECT ─→ MD ─→ DRAFTING → BA
 
 ```
 MD ──starts──→ Researcher ──reads session log + ICP──→ Strategist
-                                                        │
-                                            reads templates + corpus
-                                                        │
-                                                        ▼
-                                                     Copywriter
-                                                        │
-                                                      writes drafts
-                                                        │
-                                                        ▼
-                                                     Designer
-                                                        │
-                                                   calls designer.py
-                                                        │
-                                                        ▼
-                                                      Editor
-                                                        │
-                                                   calls editor.py
-                                                        │
-                                                        ▼
-                                                       MD
-                                                        │
-                                                  human reviews
-                                                        │
-                                                        ▼
-                                                    Publisher
-                                                        │
-                                                  calls publisher
-                                                        │
-                                                        ▼
-                                                     Analyst
-                                                        │
-                                                   calls analyst
-                                                        │
-                                                        ▼
-                                                       MD
-                                                        │
-                                                  archives brief
-                                                        │
-                                                        ▼
-                                                      IDLE
+                                                         │
+                                             reads templates + corpus
+                                                         │
+                                                         ▼
+                                                      Copywriter
+                                                         │
+                                                    asks user formats
+                                                         │
+                                                       writes drafts
+                                                         │
+                                                         ▼
+                                                      Designer
+                                                         │
+                                                    calls designer.py
+                                                         │
+                                                         ▼
+                                                       Editor
+                                                         │
+                                                    calls editor.py
+                                                         │
+                                                         ▼
+                                                     Publisher
+                                                         │
+                                                    asks user p/h/r
+                                                         │
+                                                    calls publisher
+                                                         │
+                                                         ▼
+                                                      Analyst
+                                                         │
+                                                    calls analyst
+                                                         │
+                                                         ▼
+                                                        MD
+                                                         │
+                                                   archives brief
+                                                         │
+                                                         ▼
+                                                       IDLE
 ```
 
 ---
@@ -99,12 +78,10 @@ MD ──starts──→ Researcher ──reads session log + ICP──→ Strat
 | SESSION_CAPTURE | `content/sessions/*.md` OR `topic text` | `## researcher` |
 | COMPILE | `## researcher`, `system/prompts/compiler.md`, `strategy/icp.md` | `## strategist.core_insight` + `## strategist.meanings` |
 | SELECT | `## strategist`, `templates/registry/viral-templates.yaml` | `## strategist.template_selection` |
-| FORMAT_WIZARD | `## strategist` | `formats: [...]` |
-| DRAFTING | `## strategist`, `## researcher`, `strategy/voice.md`, `strategy/corpus.md`, `templates/<platform>.md` | `## copywriter` + `content/queue/*.md` |
+| DRAFTING | `## strategist`, `## researcher`, `strategy/voice.md`, `strategy/corpus.md`, `templates/<platform>.md` | `## copywriter` + `content/queue/*.md` + `formats` |
 | BANNER | `## copywriter` | `## designer` + `assets/banners/*.png` + `banner:` frontmatter |
 | GATE_CHECK | drafts in `content/queue/` | `## editor` + `gates:` frontmatter |
-| PUBLISH_REVIEW | drafts + `## editor` | `publish_decisions` |
-| PUBLISHING | `publish_decisions` | `## publisher` + `content/posted/*.md` |
+| PUBLISHING | drafts in `content/queue/`, `.env` | `## publisher` + `content/posted/*.md` + `content/rejected/*.md` |
 | ANALYZING_POST | `## publisher.posted` | `## analyst` + `templates/registry/performance.json` |
 | COMPLETE_POST | `content/.brief.md` | rename to `content/.brief/YYYY-MM-DD-NNN.md` |
 

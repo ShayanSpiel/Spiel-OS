@@ -44,6 +44,7 @@ evidence:
   key_facts: [<3-7 bullets the Copywriter can quote>]
 
 ## copywriter
+formats: [x, linkedin]   <-- written by Copywriter (asked user via question tool)
 drafts:
   - file: content/queue/2026-06-22-x-taste-bottleneck.md
     template: x-ship-01
@@ -72,6 +73,11 @@ banners:
     banner: assets/banners/2026-06-22-linkedin-taste-bottleneck.png
 
 ## publisher
+publish_decisions:     <-- written by Publisher (asked user via question tool)
+  - draft: content/queue/2026-06-22-x-taste-bottleneck.md
+    decision: publish
+  - draft: content/queue/2026-06-22-linkedin-taste-bottleneck.md
+    decision: hold
 posted:
   - draft: content/queue/2026-06-22-x-taste-bottleneck.md
     post_ids: { x: "..." }
@@ -79,7 +85,6 @@ posted:
     archive: content/posted/2026-06-22-x-taste-bottleneck.md
 held: []
 rejected: []
-skipped_cadence: []
 failed: []
 
 ## analyst
@@ -98,7 +103,6 @@ template_rerank: { ... }
 - 2026-06-22T18:08:05Z SESSION_CAPTURE
 - 2026-06-22T18:08:30Z COMPILE
 - 2026-06-22T18:09:00Z SELECT
-- 2026-06-22T18:09:15Z FORMAT_WIZARD
 - 2026-06-22T18:10:00Z DRAFTING
 - 2026-06-22T18:14:00Z BANNER
 - 2026-06-22T18:14:30Z GATE_CHECK
@@ -111,14 +115,17 @@ template_rerank: { ... }
 
 | Section | Written by | Read by |
 |---|---|---|
-| frontmatter (`state`, `formats`) | MD | everyone |
-| `## strategist` | Strategist | Copywriter, MD |
-| `## researcher` | Researcher | Strategist, Copywriter, MD |
-| `## copywriter` | Copywriter | Editor, MD |
-| `## editor` | Editor | MD (gate verdict) |
-| `## designer` | Designer | Publisher, MD |
-| `## publisher` | Publisher | Analyst, MD |
+| frontmatter (`state`, `source`) | MD | everyone |
+| `formats` | Copywriter | Designer, Publisher |
+| `## strategist` | Strategist | Copywriter |
+| `## researcher` | Researcher | Strategist, Copywriter |
+| `## copywriter` | Copywriter | Editor, Designer |
+| `## editor` | Editor | Publisher |
+| `## designer` | Designer | Publisher |
+| `## publisher` (decisions) | Publisher | Publisher (dispatch phase) |
+| `## publisher` (results) | Publisher | Analyst, MD |
 | `## analyst` | Analyst | MD, Strategist (next run, template rerank) |
+| `publish_decisions` | Publisher | Publisher (self-read for dispatch) |
 | `## state_history` | MD | MD only |
 
 Each role writes its section **once** per state. A re-run of the same state is idempotent — the role first reads the existing section, computes a diff, and only overwrites the fields it owns.

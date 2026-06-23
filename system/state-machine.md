@@ -6,28 +6,33 @@ The state machine is a markdown table. There is no Python orchestrator. MD (the 
 
 ---
 
-## The 12 states
+## The 10 states
 
-| #  | State              | From              | Role           | Output check                       | Next states                       |
-|----|--------------------|-------------------|----------------|------------------------------------|-----------------------------------|
-| 0  | IDLE               | (any)             | MD             | new run?                           | SESSION_CAPTURE / PUBLISH_REVIEW  |
-| 1  | SESSION_CAPTURE    | IDLE              | Researcher     | `## researcher` populated          | COMPILE / IDLE                    |
-| 2  | COMPILE            | SESSION_CAPTURE   | Strategist     | `## strategist.core_insight`       | SELECT / IDLE                     |
-| 3  | SELECT             | COMPILE           | Strategist     | `template_selection` ≥ 1           | FORMAT_WIZARD / IDLE              |
-| 4  | FORMAT_WIZARD      | SELECT            | MD (human)     | `formats: [x,linkedin,blog]`       | DRAFTING / IDLE                   |
-| 5  | DRAFTING           | FORMAT_WIZARD     | Copywriter     | `## copywriter.drafts` ≥ 1         | BANNER / IDLE                     |
-| 6  | BANNER             | DRAFTING          | Designer       | each draft has `banner:`           | GATE_CHECK                        |
-| 7  | GATE_CHECK         | BANNER            | Editor         | `verdict: pass`                    | PUBLISH_REVIEW / DRAFTING         |
-| 8  | PUBLISH_REVIEW     | GATE_CHECK        | MD (human)     | per-draft p/h/r/s decided          | PUBLISHING / IDLE                 |
-| 9  | PUBLISHING         | PUBLISH_REVIEW    | Publisher      | `## publisher.posted` ≥ 1          | ANALYZING_POST                    |
-| 10 | ANALYZING_POST     | PUBLISHING        | Analyst        | `## analyst.engagement`            | COMPLETE_POST                     |
-| 11 | COMPLETE_POST      | ANALYZING_POST    | MD             | `.brief.md` archived               | IDLE                              |
+| # | State | From | Role | Output check | Next states |
+|---|---|---|---|---|---|
+| 0 | IDLE | (any) | MD | new run? | SESSION_CAPTURE |
+| 1 | SESSION_CAPTURE | IDLE | Researcher | `## researcher` populated | COMPILE / IDLE |
+| 2 | COMPILE | SESSION_CAPTURE | Strategist | `## strategist.core_insight` | SELECT / IDLE |
+| 3 | SELECT | COMPILE | Strategist | `template_selection` ≥ 1 | DRAFTING / IDLE |
+| 4 | DRAFTING | SELECT | Copywriter | `## copywriter.drafts` ≥ 1 | BANNER / IDLE |
+| 5 | BANNER | DRAFTING | Designer | each draft has `banner:` | GATE_CHECK |
+| 6 | GATE_CHECK | BANNER | Editor | `verdict: pass` | PUBLISHING / DRAFTING |
+| 7 | PUBLISHING | GATE_CHECK | Publisher | `## publisher` populated | ANALYZING_POST / IDLE |
+| 8 | ANALYZING_POST | PUBLISHING | Analyst | `## analyst.engagement` | COMPLETE_POST |
+| 9 | COMPLETE_POST | ANALYZING_POST | MD | `.brief.md` archived | IDLE |
+
+Human checkpoints are no longer separate states. Each role owns its own user interaction:
+
+- **Copywriter (DRAFTING)** — asks user which formats to write (x, linkedin, blog)
+- **Publisher (PUBLISHING)** — asks user per-draft publish/hold/reject
+
+Roles use the IDE's `question` tool to ask. The question propagates up to the user automatically. MD never handles human interrupts.
 
 ---
 
 ## Hand-off discipline
 
-- Each role writes its `## <role>` section, appends the next state to `## state_history`, returns.
+- Each subagent writes its `## <role>` section, then returns.
 - MD reads the last line of `## state_history`, looks up the row above, dispatches the next role.
 - 15-minute idle between role calls = state expires → MD reverts to IDLE.
 - One state at a time. No parallel roles. No skipping.
@@ -38,23 +43,26 @@ The state machine is a markdown table. There is no Python orchestrator. MD (the 
 
 If `## state_history` is empty, MD assumes `IDLE` and starts a new run.
 
-## Human checkpoints
+## Human interaction (embedded in roles)
 
-- **FORMAT_WIZARD (state 4)** — MD prints the format picker verbatim, waits for the user's answer. Allowed: `x`, `linkedin`, `blog`, `x linkedin`, `x,blog`, `1`-`7`, `all`, `hold`.
-- **PUBLISH_REVIEW (state 8)** — MD prints one panel per draft, waits for the user's `p`/`h`/`r <reason>`/`s` per draft, then a final `y`/`N` confirm.
+Two roles interact with the user via the `question` tool:
 
-**MD NEVER auto-picks at checkpoints.** Always prints the banner and waits. The subagent in the IDE relays the banner to the user, pipes the answer back.
+| Role | State | What it asks | Input shape |
+|---|---|---|---|
+| Copywriter | DRAFTING | Which platforms? | `x`, `linkedin`, `blog`, `x linkedin`, `all`, `hold` |
+| Publisher | PUBLISHING | Per-draft p/h/r? | `p`, `h`, `r <reason>` |
+| Publisher | PUBLISHING | Confirm all decisions | `y` / `N` |
 
----
+If the user says `hold` at format pick, Copywriter returns with no drafts — MD goes to IDLE.
+If the user holds/rejects all at publish review, Publisher returns with `posted: []` — MD skips ANALYZING_POST.
 
 ## Bounce rule
 
-- **GATE_CHECK → DRAFTING** if any draft failed mechanical gates. Editor calls `tools/editor.py` once more after Copywriter's fix. Max 3 bounce rounds; after 3, MD moves to PUBLISH_REVIEW anyway with a `verdict: warn` flag.
-- **PUBLISH_REVIEW → IDLE** if user picks `hold` (return to queue for later) or `reject` (move to `content/rejected/`).
+- **GATE_CHECK → DRAFTING** if any draft failed mechanical gates. Editor calls `tools/editor.py` once more after Copywriter's fix. Max 3 bounce rounds; after 3, MD moves to PUBLISHING anyway with a `verdict: warn` flag.
 
 ## Hold / Reject
 
-- **Hold** = draft stays in `content/queue/`, decision is null. MD re-enters `PUBLISH_REVIEW` next time `/post` is called.
+- **Hold** = draft stays in `content/queue/`, decision is null. Publisher logs it. Next `/post` run enters PUBLISHING for those held drafts.
 - **Reject** = draft moves to `content/rejected/` with a `rejection_reason:` frontmatter field. Engine learns nothing from this (no LLM-judged adaptation in MVP).
 
 ## Idempotency

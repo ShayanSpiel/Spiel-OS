@@ -302,14 +302,8 @@ else
     exit 1
   fi
 
-  # Try to open the browser (only if we have a display tool)
-  if [[ $HAS_TTY -eq 1 ]]; then
-    if command -v open >/dev/null 2>&1; then
-      (sleep 0.5; open "http://localhost:$WIZARD_PORT/") 2>/dev/null || true
-    elif command -v xdg-open >/dev/null 2>&1; then
-      (sleep 0.5; xdg-open "http://localhost:$WIZARD_PORT/") 2>/dev/null || true
-    fi
-  fi
+  # Wizard server auto-opens the browser via serve.py (single source of truth).
+  # No duplicate `open` call here.
 
   # Wait for the wizard to write its marker file (which it does on Finish)
   # or for the user to Ctrl+C.
@@ -358,10 +352,14 @@ if [[ $WIZARD_EXIT -eq 0 && -f "$INSTALL_DIR/.env" ]]; then
   printf 'VAULT_DIR=%s\n' "$INSTALL_DIR" > "$INSTALL_DIR/.spiel-vault"
   ok "Vault pointer: $INSTALL_DIR/.spiel-vault"
 
-  # Rewrite VAULT_DIR= line in .env (preserves all other lines)
+  # Rewrite VAULT_DIR= line in .env (add if missing, preserves all other lines)
   if [[ -f "$INSTALL_DIR/.env" ]]; then
     if grep -q '^VAULT_DIR=' "$INSTALL_DIR/.env" 2>/dev/null; then
       sed -i '' "s|^VAULT_DIR=.*|VAULT_DIR=$INSTALL_DIR|" "$INSTALL_DIR/.env"
+      ok "Updated VAULT_DIR in .env → $INSTALL_DIR"
+    else
+      printf '\nVAULT_DIR=%s\n' "$INSTALL_DIR" >> "$INSTALL_DIR/.env"
+      ok "Appended VAULT_DIR to .env → $INSTALL_DIR"
     fi
   fi
 

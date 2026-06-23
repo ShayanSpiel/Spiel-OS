@@ -21,24 +21,23 @@ The 8 roles are `.md` files in `team/`. The 4 deterministic tools (gates, banner
 
 | Role | File | State machine states owned | Type |
 |---|---|---|---|
-| **MD** | [`team/md.md`](team/md.md) | IDLE, FORMAT_WIZARD, PUBLISH_REVIEW, COMPLETE_POST | LLM agent (the only one that knows the full state machine) |
+| **MD** | [`team/md.md`](team/md.md) | IDLE, COMPLETE_POST | LLM agent (orchestrator — reads the state machine, delegates) |
 | **Strategist** | [`team/strategist.md`](team/strategist.md) | COMPILE, SELECT | LLM agent (runs the 8-step / 6-question compiler, ranks templates) |
 | **Researcher** | [`team/researcher.md`](team/researcher.md) | SESSION_CAPTURE | LLM agent + `tools/researcher.py` (synthesizes session log from opencode DB, classifies) |
-| **Copywriter** | [`team/copywriter.md`](team/copywriter.md) | DRAFTING | LLM agent (writes drafts, applies voice register, 14 soft-gate self-check) |
+| **Copywriter** | [`team/copywriter.md`](team/copywriter.md) | DRAFTING | LLM agent (format wizard + writes drafts, applies voice register, 14 soft-gate self-check) |
 | **Editor** | [`team/editor.md`](team/editor.md) | GATE_CHECK | LLM agent + `tools/editor.py` (15 mechanical + 14 soft gates) |
 | **Designer** | [`team/designer.md`](team/designer.md) | BANNER | LLM agent + `tools/designer.py` (picks template + tokens, calls Playwright) |
-| **Publisher** | [`team/publisher.md`](team/publisher.md) | PUBLISHING | LLM agent + `tools/publisher/*.py` (Buffer, X direct, LinkedIn direct, blog.sh) |
+| **Publisher** | [`team/publisher.md`](team/publisher.md) | PUBLISHING | LLM agent (publish wizard + dispatch) + `tools/publisher/*.py` |
 | **Analyst** | [`team/analyst.md`](team/analyst.md) | ANALYZING_POST | LLM agent + `tools/analyst.py` (engagement pull, perf re-rank) |
 
 Every role is a subagent. The IDE invokes the MD subagent when you type `/post`. MD chains the other 7.
 
 ---
 
-## The 12 states
+## The 10 states
 
 ```
-IDLE → SESSION_CAPTURE → COMPILE → SELECT → FORMAT_WIZARD → DRAFTING → BANNER
-     → GATE_CHECK → PUBLISH_REVIEW → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
+IDLE → SESSION_CAPTURE → COMPILE → SELECT → DRAFTING → BANNER → GATE_CHECK → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
 ```
 
 The state table is the **single source of truth** at `system/state-machine.md`. No Python enforces it. MD reads the table; nobody else needs to.
@@ -47,18 +46,16 @@ The state table is the **single source of truth** at `system/state-machine.md`. 
 
 | # | State | Role | Action | Next states |
 |---|---|---|---|---|
-| 0 | IDLE | MD | reset brief, await intent | SESSION_CAPTURE / PUBLISH_REVIEW |
+| 0 | IDLE | MD | reset brief, await intent | SESSION_CAPTURE |
 | 1 | SESSION_CAPTURE | Researcher | collect source + classify | COMPILE / IDLE |
 | 2 | COMPILE | Strategist | 8-step (session) or 6-question (topic) compiler | SELECT / IDLE |
-| 3 | SELECT | Strategist | rank templates by archetype/axis/funnel/ICP | FORMAT_WIZARD / IDLE |
-| 4 | FORMAT_WIZARD | **MD (human gate)** | pick platforms (x, linkedin, blog) | DRAFTING / IDLE |
-| 5 | DRAFTING | Copywriter | write drafts, soft-gate self-check | BANNER / IDLE |
-| 6 | BANNER | Designer | pick template + tokens, call `tools/designer.py` | GATE_CHECK |
-| 7 | GATE_CHECK | Editor | call `tools/editor.py` (15 mechanical) + 14 soft review | PUBLISH_REVIEW / DRAFTING |
-| 8 | PUBLISH_REVIEW | **MD (human gate)** | per-draft p/h/r/s | PUBLISHING / IDLE |
-| 9 | PUBLISHING | Publisher | dispatch via Buffer (or direct API) + archive | ANALYZING_POST |
-| 10 | ANALYZING_POST | Analyst | pull engagement + re-rank templates | COMPLETE_POST |
-| 11 | COMPLETE_POST | MD | archive `.brief.md` | IDLE |
+| 3 | SELECT | Strategist | rank templates by archetype/axis/funnel/ICP | DRAFTING / IDLE |
+| 4 | DRAFTING | Copywriter | format wizard + write drafts, soft-gate self-check | BANNER / IDLE |
+| 5 | BANNER | Designer | pick template + tokens, call `tools/designer.py` | GATE_CHECK |
+| 6 | GATE_CHECK | Editor | call `tools/editor.py` (15 mechanical) + 14 soft review | PUBLISHING / DRAFTING |
+| 7 | PUBLISHING | Publisher | publish wizard + dispatch via Buffer (or direct API) + archive | ANALYZING_POST / IDLE |
+| 8 | ANALYZING_POST | Analyst | pull engagement + re-rank templates | COMPLETE_POST |
+| 9 | COMPLETE_POST | MD | archive `.brief.md` | IDLE |
 
 ---
 
@@ -73,49 +70,11 @@ state: GATE_CHECK
 source: { kind: session, file: content/sessions/2026-06-22-session-...md }
 formats: [x, linkedin, blog]
 ---
-
-## strategist          <-- Strategist writes this
-core_insight: ...
-meanings: { systemic: ..., behavioral: ..., ... }
-selected_meaning: { axis: human, rationale: ... }
-template_selection: { x: [...], linkedin: [...], blog: [...] }
-
-## researcher          <-- Researcher writes this
-classification: { archetype: S1, funnel: MOFU, icp_layer: L3, vertical: ... }
-evidence: { session: ..., topic_text: ..., key_facts: [...] }
-
-## copywriter          <-- Copywriter writes this
-drafts:
-  - file: content/queue/2026-06-22-x-foo.md
-    template: x-ship-01
-    ...
-
-## editor              <-- Editor writes this
-gates: { ... }  # 15 mechanical
-soft: { ... }   # 14 soft
-verdict: pass
-
-## designer            <-- Designer writes this
-banners: [...]
-
-## publisher           <-- Publisher writes this
-posted: [...]
-held: []
-rejected: []
-
-## analyst             <-- Analyst writes this
-engagement: [...]
-
-## state_history       <-- MD appends one line per transition
-- 2026-06-22T18:08:00Z IDLE
-- 2026-06-22T18:08:05Z SESSION_CAPTURE
-- 2026-06-22T18:08:30Z COMPILE
-- ...
 ```
 
 **Field ownership** — each role writes its section once per state. Re-running is idempotent (read existing, diff, overwrite owned fields).
 
-**Section missing** — if MD dispatches a role and the role's input section is missing, the role returns `error: <section> missing` and MD reverts to the previous state. This is the **only** atomicity guarantee.
+**Section missing** — if MD dispatches a role and the role's input section is missing, the role returns `error: <section> missing` and MD reverts to the previous state.
 
 **File location** — `content/.brief.md` while running, archived to `content/.brief/YYYY-MM-DD-NNN.md` on COMPLETE_POST. `.brief/` is gitignored.
 
@@ -123,26 +82,28 @@ engagement: [...]
 
 ---
 
-## Two human checkpoints
+## Human interaction (embedded in roles)
 
-| State | What the user does | Wizard banner source |
-|---|---|---|
-| FORMAT_WIZARD | Pick platforms: x, linkedin, blog | `system/prompts/wizards.md` |
-| PUBLISH_REVIEW | Per-draft p/h/r/s | `system/prompts/wizards.md` |
+Two roles interact with the user directly via the `question` tool:
 
-**MD NEVER auto-picks at a checkpoint.** Always prints the banner verbatim and waits. The subagent in the IDE relays the banner to the user, pipes the answer back.
+| Role | State | What the user does | Source |
+|---|---|---|---|
+| **Copywriter** | DRAFTING | Pick platforms: x, linkedin, blog | `skill/format_wizard/SKILL.md` |
+| **Publisher** | PUBLISHING | Per-draft p/h/r/s | `skill/publish_wizard/SKILL.md` |
+
+Roles NEVER auto-pick at a human checkpoint. Always use the `question` tool and wait for the user's answer. MD is never involved in human interaction.
 
 ---
 
 ## Bounce rule
 
-- **GATE_CHECK → DRAFTING** if any draft failed mechanical gates. Editor calls `tools/editor.py` once more after Copywriter's fix. Max 3 bounce rounds; after 3, MD moves to PUBLISH_REVIEW anyway with `verdict: warn`.
+- **GATE_CHECK → DRAFTING** if any draft failed mechanical gates. Editor calls `tools/editor.py` once more after Copywriter's fix. Max 3 bounce rounds; after 3, MD moves to PUBLISHING anyway with `verdict: warn`.
 
 ---
 
 ## Hold / Reject
 
-- **Hold** — draft stays in `content/queue/`, decision is null. MD re-enters `PUBLISH_REVIEW` next time.
+- **Hold** — draft stays in `content/queue/`, decision is null. Publisher handles it. Next `/post` run enters PUBLISHING for those held drafts.
 - **Reject** — draft moves to `content/rejected/` with `rejection_reason:` frontmatter.
 
 ---
@@ -231,7 +192,8 @@ Adding a new state is **one row in the table** + one role file (or a delegation 
 | LLM identity | `system/prompts/identity.md` |
 | Compiler prompt | `system/prompts/compiler.md` |
 | Leak guard | `system/prompts/leak-guard.md` |
-| Wizard banners | `system/prompts/wizards.md` |
+| Format wizard skill | `~/.config/opencode/skill/format_wizard/SKILL.md` |
+| Publish wizard skill | `~/.config/opencode/skill/publish_wizard/SKILL.md` |
 | Quality gates | `system/gates.md` |
 | Mechanical config | `system/rules.yaml` |
 | Knowledge base (user) | `strategy/*.md` (filled by wizard) |
@@ -254,7 +216,7 @@ Adding a new state is **one row in the table** + one role file (or a delegation 
 
 ## Hard rules across the system
 
-- **NEVER** auto-pick at a human checkpoint. The wizard is a wizard.
+- **NEVER** auto-pick at a human checkpoint. Use the `question` tool. Wait for the user.
 - **NEVER** use em-dashes. Use →, colons, or commas. The Editor will fail the draft.
 - **NEVER** leak internal labels (S1–S10, TOFU/MOFU/BOFU, L1–L4, "core_insight" as a label, "the engine" as a label, "the pipeline" as a label) in public posts.
 - **NEVER** pitch the offer outside the 1-in-5 rule.
