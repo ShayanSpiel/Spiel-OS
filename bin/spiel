@@ -434,17 +434,18 @@ case "${1:-}" in
     # overlay might leave them in the user's vault. This loop removes them.
     echo ""
     echo "  → cleaning stale team/ files in vault..."
-    local _removed=0
+    _spiel_removed=0
     for f in $_STALE_TEAM_FILES; do
       if [[ -f "$VAULT/team/$f.md" ]]; then
         rm -f "$VAULT/team/$f.md"
         echo "    removed: team/$f.md"
-        _removed=$((_removed + 1))
+        _spiel_removed=$((_spiel_removed + 1))
       fi
     done
-    if [[ $_removed -eq 0 ]]; then
+    if [[ $_spiel_removed -eq 0 ]]; then
       echo "    (none found)"
     fi
+    unset _spiel_removed
 
     # Rewrite vault pointer files — _rewrite_vault_pointers validates the path
     # and refuses to write if VAULT looks like a temp dir or is not a real vault.

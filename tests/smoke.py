@@ -173,15 +173,21 @@ What did you ship this week?
 
 def test_wizard_server() -> None:
     print("\n[4] Wizard server (install/wizard/serve.py)")
-    # Save and restore the global config so test doesn't corrupt the user's setup
-    global_cfg = Path.home() / ".config" / "spielos" / "config"
-    saved_cfg = global_cfg.read_text() if global_cfg.exists() else None
+    # Sandbox the wizard subprocess with a fake HOME so it never writes to
+    # the user's real ~/.config/spielos/config. This makes the test safe
+    # even if it crashes mid-way (no leftover global state).
     with tempfile.TemporaryDirectory() as tmp:
+        # Create the fake $HOME — wizard's Path.home() will resolve here.
+        fake_home = Path(tmp) / "fakehome"
+        fake_home.mkdir()
         port = 19331
+        env = os.environ.copy()
+        env["HOME"] = str(fake_home)
         proc = subprocess.Popen(
             [sys.executable, str(ROOT / "install" / "wizard" / "serve.py"),
              "--port", str(port), "--target", str(Path(tmp) / "vault"), "--no-open"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env,
         )
         time.sleep(0.8)
         try:
@@ -214,12 +220,10 @@ def test_wizard_server() -> None:
                 check("wizard /api/finish writes files", len(data.get("written", [])) >= 4)
         finally:
             proc.terminate()
-            proc.wait(timeout=3)
-            # Restore global config
-            if saved_cfg is not None:
-                global_cfg.write_text(saved_cfg, encoding="utf-8")
-            elif global_cfg.exists():
-                global_cfg.unlink()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
 
 
 def test_sync_adapters() -> None:
