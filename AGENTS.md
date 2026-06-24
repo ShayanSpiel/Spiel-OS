@@ -11,26 +11,40 @@ The canonical governance doc. **The state machine, the team, the role contracts.
 
 ## What SpielOS is
 
-A markdown-driven marketing team. You bring the work. The team — **MD, Strategist, Researcher, Copywriter, Editor, Designer, Publisher, Analyst** — turns it into posts for X, LinkedIn, and your blog. **You stay a builder.**
+A markdown-driven marketing team. You bring the work. MD — the orchestrator — turns it into posts for X, LinkedIn, and your blog. **You stay a builder.**
 
-The 8 roles are `.md` files in `team/`. The 4 deterministic tools (gates, banner, publish, analyst) are small Python CLIs in `tools/`. The state machine is a single markdown table at `system/state-machine.md`. The handoff file is one `.brief.md` per run. **No central Python orchestrator.**
+The pipeline has **3 subagents** (real agents for tool-heavy work: designer, editor, publisher) and **5 reference docs** (LLM-driven work MD does inline: researcher, strategist, copywriter, analyst). The 3 subagents live in `team/`. The 5 reference docs live in `system/prompts/`. The 5 deterministic tools are small Python CLIs in `tools/`. The state machine is a single markdown table at `system/state-machine.md`. The handoff file is one `.brief.md` per run. **No central Python orchestrator.**
+
+**Why this design:** the 3 subagents (designer, editor, publisher) genuinely need their own context — they run heavy tooling (Playwright, Buffer API, GH Pages) and have complex state management (the bounce loop in editor). The 5 LLM-driven roles do pure reasoning and work better when the LLM has the full context. Putting them all behind `task()` made the UX nested 7 levels deep. This model is 1 level deep (post → MD), with 3 tool delegations to subagents where isolation matters.
 
 ---
 
-## The 8 roles
+## The team: 3 subagents + 5 reference docs
 
-| Role | File | State machine states owned | Type |
+### 3 subagents (in `team/`)
+
+| Agent | File | States owned | What it does |
 |---|---|---|---|
-| **MD** | [`team/md.md`](team/md.md) | IDLE, COMPLETE_POST | LLM agent (orchestrator — reads the state machine, delegates) |
-| **Strategist** | [`team/strategist.md`](team/strategist.md) | COMPILE, SELECT | LLM agent (runs the 8-step / 6-question compiler, ranks templates) |
-| **Researcher** | [`team/researcher.md`](team/researcher.md) | SESSION_CAPTURE | LLM agent + `tools/researcher.py` (synthesizes session log from opencode DB, classifies) |
-| **Copywriter** | [`team/copywriter.md`](team/copywriter.md) | DRAFTING | LLM agent (format wizard + writes drafts, applies voice register, 14 soft-gate self-check) |
-| **Editor** | [`team/editor.md`](team/editor.md) | GATE_CHECK | LLM agent + `tools/editor.py` (15 mechanical + 14 soft gates) |
-| **Designer** | [`team/designer.md`](team/designer.md) | BANNER | LLM agent + `tools/designer.py` (picks template + tokens, calls Playwright) |
-| **Publisher** | [`team/publisher.md`](team/publisher.md) | PUBLISHING | LLM agent (publish wizard + dispatch) + `tools/publisher/*.py` |
-| **Analyst** | [`team/analyst.md`](team/analyst.md) | ANALYZING_POST | LLM agent + `tools/analyst.py` (engagement pull, perf re-rank) |
+| **designer** | [`team/designer.md`](team/designer.md) | BANNER | Picks template + tokens, calls `tools/designer.py` (Playwright + system Chrome) |
+| **editor** | [`team/editor.md`](team/editor.md) | GATE_CHECK | Calls `tools/editor.py` (15 mechanical) + 14 soft review, bounce loop |
+| **publisher** | [`team/publisher.md`](team/publisher.md) | PUBLISHING | Per-draft p/h/r wizard, dispatch via Buffer / direct API / GH Pages |
 
-Every role is a subagent. The IDE invokes the MD subagent when you type `/post`. MD chains the other 7.
+The IDE invokes the MD subagent when you type `/post`. MD delegates to these 3 via `task()` — and only these 3 (the permission block literally allows only these 3).
+
+### 5 reference docs (in `system/prompts/`, run inline by MD)
+
+| Role | Reference doc | States | What it does |
+|---|---|---|---|
+| **researcher** | [`system/prompts/researcher.md`](system/prompts/researcher.md) | SESSION_CAPTURE | DB synthesis (primary) + classification + key facts |
+| **strategist** | [`system/prompts/strategist.md`](system/prompts/strategist.md) | COMPILE, SELECT | 8-step (session) or 6-question (topic) compiler + template ranking |
+| **copywriter** | [`system/prompts/copywriter.md`](system/prompts/copywriter.md) | DRAFTING | Format wizard (question tool) + writes drafts + 14 soft-gate self-check |
+| **analyst** | [`system/prompts/analyst.md`](system/prompts/analyst.md) | ANALYZING_POST | Engagement pull + perf ledger + re-rank |
+| **format-wizard** | [`system/prompts/format-wizard.md`](system/prompts/format-wizard.md) | (called from DRAFTING) | Asks user which platforms to write for |
+
+These are reference docs that MD reads via the `read` tool at each step. The LLM that runs MD is the actor; the docs are the procedure. This means:
+- The user sees strategist/copywriter/analyst work in MD's visible conversation
+- No nested subagent conversations
+- The session capture is fixed (researcher.py reads the opencode DB, MD has the result in context)
 
 ---
 
@@ -44,24 +58,24 @@ The state table is the **single source of truth** at `system/state-machine.md`. 
 
 ### State → role → action map
 
-| # | State | Role | Action | Next states |
+| # | State | Owner | Action | Next states |
 |---|---|---|---|---|
 | 0 | IDLE | MD | reset brief, await intent | SESSION_CAPTURE |
-| 1 | SESSION_CAPTURE | Researcher | collect source + classify | COMPILE / IDLE |
-| 2 | COMPILE | Strategist | 8-step (session) or 6-question (topic) compiler | SELECT / IDLE |
-| 3 | SELECT | Strategist | rank templates by archetype/axis/funnel/ICP | DRAFTING / IDLE |
-| 4 | DRAFTING | Copywriter | format wizard + write drafts, soft-gate self-check | BANNER / IDLE |
-| 5 | BANNER | Designer | pick template + tokens, call `tools/designer.py` | GATE_CHECK |
-| 6 | GATE_CHECK | Editor | call `tools/editor.py` (15 mechanical) + 14 soft review | PUBLISHING / DRAFTING |
-| 7 | PUBLISHING | Publisher | publish wizard + dispatch via Buffer (or direct API) + archive | ANALYZING_POST / IDLE |
-| 8 | ANALYZING_POST | Analyst | pull engagement + re-rank templates | COMPLETE_POST |
+| 1 | SESSION_CAPTURE | **MD inline** (reads `system/prompts/researcher.md`) | DB synthesis + classification + key facts | COMPILE / IDLE |
+| 2 | COMPILE | **MD inline** (reads `system/prompts/strategist.md` + `system/prompts/compiler.md`) | 8-step (session) or 6-question (topic) compiler | SELECT / IDLE |
+| 3 | SELECT | **MD inline** (reads `system/prompts/strategist.md`) | rank templates by archetype/axis/funnel/ICP | DRAFTING / IDLE |
+| 4 | DRAFTING | **MD inline** (reads `system/prompts/copywriter.md` + `format-wizard.md`) | format wizard (question tool) + write drafts + soft-gate self-check | BANNER / IDLE |
+| 5 | BANNER | **@designer subagent** (via `task()`) | pick template + tokens, call `tools/designer.py` | GATE_CHECK |
+| 6 | GATE_CHECK | **@editor subagent** (via `task()`) | call `tools/editor.py` (15 mechanical) + 14 soft review | PUBLISHING / DRAFTING |
+| 7 | PUBLISHING | **@publisher subagent** (via `task()`) | publish wizard + dispatch via Buffer (or direct API) + archive | ANALYZING_POST / IDLE |
+| 8 | ANALYZING_POST | **MD inline** (reads `system/prompts/analyst.md`) | pull engagement + re-rank templates | COMPLETE_POST |
 | 9 | COMPLETE_POST | MD | archive `.brief.md` | IDLE |
 
 ---
 
 ## The handoff file: `.brief.md`
 
-One `.brief.md` per `/post` run. Every role writes its `## <role>` section, appends the next state to `## state_history`, returns. Schema at `system/brief-schema.md`.
+One `.brief.md` per `/post` run. Every role (subagent or inline) writes its `## <role>` section, appends the next state to `## state_history`, returns. Schema at `system/brief-schema.md`.
 
 ```markdown
 ---
@@ -74,7 +88,7 @@ formats: [x, linkedin, blog]
 
 **Field ownership** — each role writes its section once per state. Re-running is idempotent (read existing, diff, overwrite owned fields).
 
-**Section missing** — if MD dispatches a role and the role's input section is missing, the role returns `error: <section> missing` and MD reverts to the previous state.
+**Section missing** — if MD runs an inline step and the prior step's section is missing, MD re-runs the prior step (retry once). If still missing, MD exits to IDLE with an error.
 
 **File location** — `content/.brief.md` while running, archived to `content/.brief/YYYY-MM-DD-NNN.md` on COMPLETE_POST. `.brief/` is gitignored.
 
@@ -88,8 +102,8 @@ Two roles interact with the user directly via the `question` tool:
 
 | Role | State | What the user does | Source |
 |---|---|---|---|
-| **Copywriter** | DRAFTING | Pick platforms: x, linkedin, blog | `skill/format_wizard/SKILL.md` |
-| **Publisher** | PUBLISHING | Per-draft p/h/r/s | `skill/publish_wizard/SKILL.md` |
+| **Copywriter (inline in MD)** | DRAFTING | Pick platforms: x, linkedin, blog | `system/prompts/format-wizard.md` |
+| **Publisher (subagent)** | PUBLISHING | Per-draft p/h/r/s | `~/.config/opencode/skill/publish_wizard/SKILL.md` |
 
 Roles NEVER auto-pick at a human checkpoint. Always use the `question` tool and wait for the user's answer. MD is never involved in human interaction.
 
@@ -108,9 +122,9 @@ Roles NEVER auto-pick at a human checkpoint. Always use the `question` tool and 
 
 ---
 
-## How a role is structured
+## How a subagent is structured
 
-Every `team/<role>.md` has the same shape:
+Every `team/<role>.md` (the 3 subagents) has this shape:
 
 ```markdown
 ---
@@ -147,35 +161,75 @@ tools: [<list of CLI tools>]
 [What I do when X]
 ```
 
-When you add a new role, copy this structure. The handoff contract (`reads:` / `writes:`) is what makes the chain work.
+When you add a new subagent, copy this structure. The handoff contract (`reads:` / `writes:`) is what makes the chain work.
+
+## How a reference doc is structured
+
+Every `system/prompts/<role>.md` (the 5 inline roles) has this shape:
+
+```markdown
+---
+name: <role>
+description: <one-line — what the doc is, what state MD reads it at>
+---
+
+# <Role> (reference for MD)
+
+## Mission
+[What MD does at this step]
+
+## Status output
+[The `MD — <status>` lines MD prints while running this step]
+
+## Handoff IN / Handoff OUT
+[What MD reads, what MD writes to the brief]
+
+## <role-specific procedure>
+[Full step-by-step procedure MD follows inline]
+
+## Hard rules
+[What MD never does at this step]
+
+## Failure modes
+[What MD does when X]
+```
+
+The reference doc is procedural guidance for the LLM running MD. It is not a subagent — `sync_adapters.py` will not install it as one.
 
 ---
 
 ## What stays deterministic
 
-These 4 tools the LLM can't replace:
+These 5 tools the LLM can't replace:
 
 | Tool | Role | What |
 |---|---|---|
-| `tools/editor.py` | Editor | 15 mechanical gate checks (regex, length, structural) |
-| `tools/designer.py` | Designer | Banner PNG render (Playwright + system Chrome) |
-| `tools/publisher/{buffer,twitter,linkedin,blog.sh}` | Publisher | API dispatch + archive |
-| `tools/analyst.py` | Analyst | Buffer engagement pull + perf ledger + re-rank |
-| `tools/researcher.py` | Researcher | Session log synthesis from opencode DB + classify |
+| `tools/editor.py` | Editor (subagent) | 15 mechanical gate checks (regex, length, structural) |
+| `tools/designer.py` | Designer (subagent) | Banner PNG render (Playwright + system Chrome) |
+| `tools/publisher/{buffer,twitter,linkedin,blog.sh}` | Publisher (subagent) | API dispatch + archive |
+| `tools/analyst.py` | Analyst (inline in MD) | Buffer engagement pull + perf ledger + re-rank |
+| `tools/researcher.py` | Researcher (inline in MD) | Session log synthesis from opencode DB + classify |
 
-Everything else is LLM-driven (the 8 role `.md` files).
+Everything else is LLM-driven (the 3 subagent `.md` files in `team/` + the 5 reference docs in `system/prompts/`).
 
 ---
 
 ## How to extend the team
 
-Adding a new role is **one file + one sync**:
+Adding a new subagent (tool-heavy role) is **one file + one sync**:
 
-1. Drop `team/<name>.md` with the structure above.
-2. Run `python3 tools/sync_adapters.py --install`.
-3. The new role is now available in opencode, Claude Code, Cursor, MCP.
+1. Drop `team/<name>.md` with the subagent structure above.
+2. Add `task.<name>: allow` to the `permission:` block in `team/md.md`.
+3. Run `python3 tools/sync_adapters.py --install`.
+4. The new subagent is now available in opencode, Claude Code, Cursor, MCP.
 
-Adding a new state is **one row in the table** + one role file (or a delegation to an existing role).
+Adding a new inline step is **one reference doc + one MD step**:
+
+1. Drop `system/prompts/<role>.md` with the reference doc structure above.
+2. Add a new procedure block in `team/md.md` that reads the doc and follows the procedure.
+3. No sync needed — reference docs are not installed as agents.
+
+Adding a new state is **one row in the table** at `system/state-machine.md` + one role file (or a delegation to an existing role).
 
 ---
 
@@ -183,7 +237,8 @@ Adding a new state is **one row in the table** + one role file (or a delegation 
 
 | What | Where |
 |---|---|
-| Role prompts (canonical) | `team/*.md` |
+| Subagent prompts (3 — designer, editor, publisher) | `team/*.md` |
+| Inline role reference docs (5 — researcher, strategist, copywriter, analyst, format-wizard) | `system/prompts/*.md` |
 | State machine (canonical) | `system/state-machine.md` |
 | Brief schema (canonical) | `system/brief-schema.md` |
 | Pipeline map | `system/pipeline.md` |
@@ -192,7 +247,7 @@ Adding a new state is **one row in the table** + one role file (or a delegation 
 | LLM identity | `system/prompts/identity.md` |
 | Compiler prompt | `system/prompts/compiler.md` |
 | Leak guard | `system/prompts/leak-guard.md` |
-| Format wizard skill | `~/.config/opencode/skill/format_wizard/SKILL.md` |
+| Format wizard skill | `system/prompts/format-wizard.md` |
 | Publish wizard skill | `~/.config/opencode/skill/publish_wizard/SKILL.md` |
 | Quality gates | `system/gates.md` |
 | Mechanical config | `system/rules.yaml` |

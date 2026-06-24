@@ -2,14 +2,17 @@
 title: LLM Identity + Hard Constraints
 type: prompt
 tags: [identity, hard-constraints, runtime]
-audience: LLM (every subagent in team/*.md)
+audience: LLM (MD + 3 subagents in team/*.md + 5 reference docs in system/prompts/*.md)
 status: canonical
 ---
 
 # LLM Identity + Hard Constraints
 
 > The single canonical source for the runtime identity and the always-banned
-> rules. Every subagent in `team/*.md` reads this on first invocation.
+> rules. MD reads this on first invocation (auto-loaded via `reads:` frontmatter
+> in `team/md.md`). The 3 subagents (designer, editor, publisher) and the 5
+> reference docs (researcher, strategist, copywriter, analyst, format-wizard)
+> reference this file for the always-banned rules.
 > Mechanical forms live in `system/rules.yaml` (regex) and `tools/editor.py`
 > (gate runner). This file is the LLM-facing narrative form.
 

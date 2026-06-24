@@ -70,19 +70,34 @@ def test_state_machine() -> None:
 
 
 def test_team_files() -> None:
-    print("\n[2] Team files present + valid frontmatter")
+    print("\n[2] Role files present + valid frontmatter (3 subagents in team/, 5 reference docs in system/prompts/)")
+    # 3 subagents in team/ — these are installed as agents
     team = ROOT / "team"
-    expected_roles = ["md", "strategist", "researcher", "copywriter", "editor",
-                      "designer", "publisher", "analyst"]
-    for r in expected_roles:
+    subagent_roles = ["md", "editor", "designer", "publisher"]
+    for r in subagent_roles:
         f = team / f"{r}.md"
-        check(f"team/{r}.md exists", f.exists())
+        check(f"team/{r}.md exists (subagent)", f.exists())
         if f.exists():
             text = f.read_text()
             check(f"team/{r}.md has frontmatter", text.startswith("---"))
             check(f"team/{r}.md has description", "description:" in text[:500])
             check(f"team/{r}.md has role_in_pipeline", "role_in_pipeline:" in text)
             check(f"team/{r}.md has hard rules", "## Hard rules" in text)
+
+    # 5 reference docs in system/prompts/ — these are NOT agents, just reference docs
+    prompts = ROOT / "system" / "prompts"
+    ref_doc_roles = ["researcher", "strategist", "copywriter", "analyst", "format-wizard"]
+    for r in ref_doc_roles:
+        f = prompts / f"{r}.md"
+        check(f"system/prompts/{r}.md exists (reference doc)", f.exists())
+        if f.exists():
+            text = f.read_text()
+            check(f"system/prompts/{r}.md has frontmatter", text.startswith("---"))
+            check(f"system/prompts/{r}.md has description", "description:" in text[:500])
+            check(f"system/prompts/{r}.md has hard rules", "## Hard rules" in text)
+            # Reference docs should NOT have role_in_pipeline (that's for subagents)
+            check(f"system/prompts/{r}.md is NOT a subagent (no role_in_pipeline)",
+                  "role_in_pipeline:" not in text)
 
 
 def test_editor_runs() -> None:
@@ -216,14 +231,18 @@ def test_sync_adapters() -> None:
         capture_output=True, text=True,
     )
     check("sync_adapters.py exits 0", r.returncode == 0, f"stderr: {r.stderr}")
-    # Check the adapters exist (v2: subagents + real skills, no auto-gen role stubs)
+    # Check the adapters exist (v3: 3 subagents only — designer, editor, publisher.
+    # Researcher/strategist/copywriter/analyst are reference docs in system/prompts/,
+    # NOT agents, so they don't get adapter files.)
     for path in [
         "adapters/opencode/agents/md.md",
-        "adapters/opencode/agents/copywriter.md",
+        "adapters/opencode/agents/designer.md",
+        "adapters/opencode/agents/editor.md",
+        "adapters/opencode/agents/publisher.md",
         "adapters/claude/agents/md.md",
         "adapters/cursor/commands/md.md",
         "adapters/mcp/server.json",
-        # v2: real skills in skills/<name>/SKILL.md (5 user skills, no role stubs)
+        # Skills (user skills, no role stubs)
         "skills/icp_simulation/SKILL.md",
         "skills/format_wizard/SKILL.md",
         "skills/publish_wizard/SKILL.md",

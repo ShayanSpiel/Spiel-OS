@@ -69,7 +69,9 @@ def find_recent_session(cwd: Path) -> dict | None:
     if not OPENCODE_DB.exists():
         return None
     try:
-        conn = sqlite3.connect(str(OPENCODE_DB))
+        # 5s timeout prevents hangs when the opencode DB is locked by an
+        # active IDE session. Default sqlite3 timeout is infinite.
+        conn = sqlite3.connect(str(OPENCODE_DB), timeout=5.0)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         # Try several schema variants
@@ -106,7 +108,9 @@ def read_session_messages(session_id: str, max_chars: int = 12000) -> list[dict]
     if not OPENCODE_DB.exists():
         return []
     try:
-        conn = sqlite3.connect(str(OPENCODE_DB))
+        # 5s timeout prevents hangs when the opencode DB is locked by an
+        # active IDE session. Default sqlite3 timeout is infinite.
+        conn = sqlite3.connect(str(OPENCODE_DB), timeout=5.0)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         for query in [
@@ -258,9 +262,14 @@ def synthesize_session(cwd: Path, out_path: Path) -> dict:
     session_id = session.get("id", "unknown")
     session_id_short = session_id.split("_")[-1] if "_" in session_id else session_id[:8]
     created = session.get("time_created")
-    if isinstance(created, (int, float)):
-        date_str = datetime.fromtimestamp(created).strftime("%Y-%m-%d")
+    if isinstance(created, (int, float)) and 0 < created < 4_000_000_000:
+        # Reasonable Unix timestamp (year 1970 to year 2096)
+        try:
+            date_str = datetime.fromtimestamp(created).strftime("%Y-%m-%d")
+        except (ValueError, OSError, OverflowError):
+            date_str = datetime.now().strftime("%Y-%m-%d")
     else:
+        # Invalid, missing, or non-numeric timestamp — fall back to today
         date_str = datetime.now().strftime("%Y-%m-%d")
     title = session.get("title") or f"Session {session_id_short}"
 

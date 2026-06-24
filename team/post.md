@@ -1,7 +1,7 @@
 ---
 name: post
 agent: md
-description: Run the /post content pipeline. A slash command that dispatches to the @md orchestrator subagent. Invoke @md immediately with the user's exact args. Do not interpret, do not ask, do not write anything yourself.
+description: Run the /post content pipeline. A slash command that dispatches to the @md orchestrator subagent. MD runs the 10-state pipeline inline for 5 states (SESSION_CAPTURE, COMPILE, SELECT, DRAFTING, ANALYZING_POST) and delegates via task() to 3 subagents for tool-heavy work (designer, editor, publisher). Invoke @md immediately with the user's exact args. Do not interpret, do not ask, do not write anything yourself.
 ---
 
 # /post — Dispatch to MD

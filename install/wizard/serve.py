@@ -648,11 +648,16 @@ def bootstrap_vault(target: Path, source: Path | None = None) -> None:
 
     # Files to copy (if missing in target)
     files_to_copy = [
-        # Role prompts
+        # Subagent prompts (3 — designer, editor, publisher stay in team/)
         "team/md.md", "team/post.md",
-        "team/strategist.md", "team/researcher.md", "team/copywriter.md",
-        "team/editor.md", "team/designer.md", "team/publisher.md", "team/analyst.md",
+        "team/editor.md", "team/designer.md", "team/publisher.md",
         "team/README.md",
+        # Inline role reference docs (5 — moved to system/prompts/)
+        "system/prompts/researcher.md",
+        "system/prompts/strategist.md",
+        "system/prompts/copywriter.md",
+        "system/prompts/analyst.md",
+        "system/prompts/format-wizard.md",
         # System
         "system/state-machine.md", "system/brief-schema.md", "system/pipeline.md",
         "system/brand.json", "system/gates.md", "system/rules.yaml",

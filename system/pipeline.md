@@ -1,41 +1,44 @@
 # Pipeline
 
-The content pipeline is a 10-state machine, executed by 8 roles, coordinated by **MD**.
+The content pipeline is a 10-state machine, executed by **MD** orchestrating 3 subagents (designer, editor, publisher) for tool-heavy work and running 5 inline steps (researcher, strategist, copywriter, analyst) in its own conversation.
 
 ```
 IDLE → SESSION_CAPTURE → COMPILE → SELECT → DRAFTING → BANNER → GATE_CHECK → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
 ```
 
-## The roles, in order
+## The 10 states
 
-| # | State | Role | Type | Output |
+| # | State | Owner | Output | Where the work runs |
 |---|---|---|---|---|
-| 0 | IDLE | **MD** | LLM | empty brief |
-| 1 | SESSION_CAPTURE | **MD (inline via researcher.md)** | LLM + tool | `## researcher` |
-| 2 | COMPILE | **MD (inline via strategist.md)** | LLM | `## strategist.core_insight` + 6 axes |
-| 3 | SELECT | **MD (inline via strategist.md)** | LLM | `## strategist.template_selection` |
-| 4 | DRAFTING | **MD (inline via copywriter.md)** | LLM + human | `## copywriter` + draft files + `formats` |
-| 5 | BANNER | **Designer** | LLM + `tools/designer.py` | `## designer` + PNG files |
-| 6 | GATE_CHECK | **Editor** | LLM + `tools/editor.py` | `## editor.verdict` |
-| 7 | PUBLISHING | **Publisher** | LLM + human + tools | `## publisher` + posted/rejected files |
-| 8 | ANALYZING_POST | **MD (inline via analyst.md)** | LLM + `tools/analyst.py` | `## analyst` |
-| 9 | COMPLETE_POST | **MD** | LLM | `.brief.md` archived |
+| 0 | IDLE | MD | empty brief | inline in MD |
+| 1 | SESSION_CAPTURE | MD (inline via `researcher.md`) | `## researcher` | inline in MD + `tools/researcher.py` |
+| 2 | COMPILE | MD (inline via `strategist.md`) | `## strategist.core_insight` + 6 axes | inline in MD |
+| 3 | SELECT | MD (inline via `strategist.md`) | `## strategist.template_selection` | inline in MD |
+| 4 | DRAFTING | MD (inline via `copywriter.md`) | `## copywriter` + draft files + `formats` | inline in MD + `question` tool |
+| 5 | BANNER | **@designer subagent** | `## designer` + PNG files | `task(designer)` + `tools/designer.py` |
+| 6 | GATE_CHECK | **@editor subagent** | `## editor.verdict` | `task(editor)` + `tools/editor.py` |
+| 7 | PUBLISHING | **@publisher subagent** | `## publisher` + posted/rejected files | `task(publisher)` + `tools/publisher/*` |
+| 8 | ANALYZING_POST | MD (inline via `analyst.md`) | `## analyst` | inline in MD + `tools/analyst.py` |
+| 9 | COMPLETE_POST | MD | `.brief.md` archived | inline in MD |
 
 ---
 
 ## Hand-off graph
 
 ```
-MD (inline flow — runs in one visible conversation)
-├── Step 2: researcher.md — DB synthesis + classification     [tools/researcher.py]
-├── Step 3: strategist.md — compiler (8-step / 6-question)    [LLM]
-├── Step 4: strategist.md — template ranking                   [LLM]
-├── Step 5: copywriter.md — format wizard + drafting           [LLM + question tool]
-├── Step 6: delegate to @designer via task()                   [tools/designer.py]
-├── Step 7: delegate to @editor via task()                     [tools/editor.py]
-├── Step 8: delegate to @publisher via task()                  [publisher tools]
-├── Step 9: analyst.md — engagement pull + re-rank             [tools/analyst.py]
-└── Step 10: archive brief                                     [bash mv]
+MD (inline — runs in MD's visible conversation, 1 nesting level)
+│
+├── Step 2: read system/prompts/researcher.md → run tools/researcher.py → write ## researcher
+├── Step 3: read system/prompts/strategist.md + compiler.md → run compiler → write ## strategist
+├── Step 4: read templates/registry/viral-templates.yaml → rank → write template_selection
+├── Step 5: read system/prompts/copywriter.md + format-wizard.md → question tool → write drafts + ## copywriter
+│
+├── Step 6: task(designer) → banner render → write ## designer
+├── Step 7: task(editor) → gate checks → write ## editor
+├── Step 8: task(publisher) → p/h/r wizard + dispatch → write ## publisher
+│
+├── Step 9: read system/prompts/analyst.md → run tools/analyst.py → write ## analyst
+└── Step 10: archive brief → IDLE
 ```
 
 Only designer, editor, and publisher run as separate subagents (via `task()`). Everything else runs inline in MD's conversation — fixing both session capture (MD can read the opencode DB) and UX (user sees progress without clicking into nested panels).
@@ -61,7 +64,7 @@ Only designer, editor, and publisher run as separate subagents (via `task()`). E
 
 ## Where the deterministic parts run
 
-- `tools/researcher.py` — synthesizes a session log from the opencode DB when `/post` (no args) finds no session.
+- `tools/researcher.py` — synthesizes a session log from the opencode DB (5s SQLite timeout to prevent hangs) + classifies.
 - `tools/designer.py` — renders PNG banners (Playwright + system Chrome).
 - `tools/editor.py` — runs the 15 mechanical gates against each draft.
 - `tools/publisher/buffer.py` — multi-platform fan-out (X + LinkedIn + Threads).

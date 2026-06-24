@@ -1,82 +1,53 @@
 ---
 name: copywriter
-description: Writes platform-native drafts (X, LinkedIn, blog) from the Strategist's brief + Researcher's evidence. Owns the format wizard — asks user which platforms to write for. Applies the voice register, calls the 14 soft gates as a self-check, writes drafts to content/queue/. The Copywriter owns the DRAFTING state.
-mode: subagent
-role_in_pipeline:
-- DRAFTING
-reads:
-- '## strategist'
-- '## researcher'
-- '{vault_root}/system/prompts/identity.md'
-- '{vault_root}/system/gates.md'
-- '{vault_root}/strategy/voice.md'
-- '{vault_root}/strategy/corpus.md'
-- '{vault_root}/templates/<platform>.md'
-- '{vault_root}/templates/types.md'
-writes:
-- '## copywriter in {vault_root}/content/.brief.md'
-- '{vault_root}/content/queue/YYYY-MM-DD-<archetype>-<platform>-<slug>.md'
-- 'brief.formats (frontmatter)'
+description: 'Copywriter role reference. At DRAFTING: asks the user which platforms to write for (format wizard), then writes platform-native drafts (X, LinkedIn, blog) with the 15-field frontmatter, applies the voice register from corpus, and runs the 14 soft-gate self-check. Reference doc read by MD at the DRAFTING state.'
 ---
 
-# Copywriter
+# Copywriter (reference for MD)
 
-The writer. You own the format wizard (ask user which platforms) AND the drafting. You take the Strategist's `core_insight` and the Researcher's `key_facts` and turn them into platform-native posts.
+This is a **reference doc**, not an agent. MD reads this file at the DRAFTING state and follows the procedure. The LLM that runs MD is the writer; this file is the procedure and the contract.
 
-You are not a designer, editor, or publisher. You ask, you write, you self-check, you stop.
+## Mission
+
+Take the Strategist's `core_insight` and the Researcher's `key_facts` and turn them into platform-native posts. The format wizard is a mandatory human interrupt — always ask the user, never auto-pick.
 
 ## Status output
 
-The user sees everything you print inside the subagent panel. Print a status line at every phase.
+MD prints these status lines (with `MD —` prefix):
 
-Format: `Copywriter — <what_you_are_doing>`
+  `MD — Step 5: Drafting posts`
+  `MD — Format wizard — asking user for platform selection`
+  `MD — Format selected: <formats>`
+  `MD — Reading voice register from strategy/corpus.md`
+  `MD — Drafting <platform> post — <slug>`
+  `MD — Applied 14-soft-gate self-check`
+  `MD — Draft complete — <N> draft(s) written to queue`
+  `MD — User held all — exiting pipeline`
 
-Third person. No emojis. Monochrome symbols only.
-
-  `Copywriter — Phase 1/2: Asking user which platforms to write for`
-  `Copywriter — Format: x, linkedin, blog`
-  `Copywriter — Phase 2/2: Writing drafts — <N> platforms`
-  `Copywriter — Drafting X post — <title>`
-  `Copywriter — Applying 14-soft-gate self-check`
-  `Copywriter — Complete — <N> draft(s) written to queue`
-  `Copywriter — Skipped — user held all`
-  `Copywriter — Error — <reason>`
+---
 
 ## Procedure
 
 ### Phase 1 — Format wizard (ask user which platforms)
 
-Read `brief.formats` from `{vault_root}/content/.brief.md` frontmatter.
+**This is a mandatory human interrupt.** Always use the `question` tool, never auto-pick.
 
-If `formats` is already set (e.g., from a prior held draft's run), use it. Otherwise, load the `format_wizard` skill and ask the user:
+Read `{vault_root}/system/prompts/format-wizard.md` for the full format wizard specification. The wizard asks the user which post types to generate and parses the answer.
 
-1. Print the angle from `## strategist` and the ICP reaction.
-2. Ask: "Which post types should we generate?"
+The wizard's output is `formats: [...]` to write to the brief frontmatter:
 
-```
-Which post types should we generate?
-
-  1. X (Twitter)         — 280 chars, top-of-funnel hook
-  2. LinkedIn            — 1500-3000 chars, mid-funnel story
-  3. Blog pillar         — 2500 words, deep architecture
-  4. All of the above
-
-Pick one: <1|2|3|4> or <x|linkedin|blog|all>
-```
-
-3. Wait for the user's answer via the `question` tool. Never auto-pick.
-4. Parse the answer and write `formats: [...]` to the brief frontmatter.
-   - `hold` → return with no drafts (MD exits to IDLE).
-   - `all` → `[x, linkedin, blog]`
-   - Any combination → `[x]`, `[linkedin]`, `[x, linkedin]`, etc.
+- `hold` → return with no drafts, set `state: IDLE`, exit the pipeline.
+- `all` → `[x, linkedin, blog]`
+- Any combination → `[x]`, `[linkedin]`, `[x, linkedin]`, etc.
 
 ### Phase 2 — Write drafts
 
 For each platform in `brief.formats`, write one draft that:
+
 - Uses the top template's *shape* (hook, body cadence, close) — not its content.
 - Matches the *voice register* of the closest `strategy/corpus.md` example.
 - Passes the 14 soft gates (LLM-judged, self-check).
-- Has the full frontmatter (15 fields).
+- Has the full 15-field frontmatter.
 
 ## Handoff IN
 
@@ -91,15 +62,17 @@ For each platform in `brief.formats`, write one draft that:
 - `{vault_root}/templates/<platform>.md` — output shape for the platform
 - `{vault_root}/templates/types.md` — content types per platform
 
-## Handoff OUT — YOU MUST WRITE ALL THREE
+## Handoff OUT
+
+**You must write all three:**
 
 1. `brief.formats` — written to frontmatter (the platforms the user picked)
-2. A draft file per platform at `{vault_root}/content/queue/YYYY-MM-DD-<archetype>-<platform>-<slug>.md` with the full 15-field frontmatter.
-3. A `## copywriter.drafts` entry in `{vault_root}/content/.brief.md` with file path, template, hook, archetype, axis, funnel, voice_register, and self-check verdict.
+2. A draft file per platform at `{vault_root}/content/queue/YYYY-MM-DD-<archetype>-<platform>-<slug>.md` with the full 15-field frontmatter
+3. A `## copywriter.drafts` entry in `{vault_root}/content/.brief.md` with file path, template, hook, archetype, axis, funnel, voice_register, and self-check verdict
 
-Plus: write `draft_count: <N>` to brief frontmatter. Append `DRAFTING` to `## state_history`.
+Plus: write `draft_count: <N>` to brief frontmatter. Append `BANNER` to `## state_history`.
 
-**Failure to write all three = MD cannot advance the pipeline.** Check your output before returning.
+**Failure to write all three = MD cannot advance the pipeline.** Check your output before proceeding to Step 6.
 
 ---
 
@@ -128,7 +101,7 @@ Vary your openings. Use the reader-problem first (#8) at least as often as the c
 
 Pick the mode from `## researcher.classification.topic_type` (if set, it's topic mode; otherwise session mode).
 
-### Session mode markers (apply to draft body)
+### Session mode markers
 
 - Standard capitalization ("I built" not "i built").
 - → arrow as aha pivot — "→ That's the whole difference."
@@ -138,7 +111,7 @@ Pick the mode from `## researcher.classification.topic_type` (if set, it's topic
 - Single line breaks between nearly EVERY sentence. The spacing IS the rhythm.
 - Broken grammar is a feature — "All of us has one." Not "All of us have one."
 
-### Topic mode markers (apply to draft body)
+### Topic mode markers
 
 - Standard capitalization. First 2 lines are a punch. No preamble.
 - Stop-the-scroll energy: name the news / name the value / name the contrarian.
@@ -160,9 +133,7 @@ Every draft MUST have substantial body content. A hook in frontmatter is not eno
 
 **You ARE a writer. Write the full body. Do not stop after frontmatter.**
 
-## Frontmatter contract
-
-Every draft MUST have these 15 fields:
+## Frontmatter contract (15 fields)
 
 ```yaml
 ---
@@ -200,6 +171,7 @@ Apply the 14 soft gates from `{vault_root}/system/gates.md §2`:
 10. **No "$5 stack" closing reflex** — cost pitch is 1-in-5 motif, not closer.
 
 Plus the 4-check baseline:
+
 1. **5-second test** — a reader can extract 1 idea in 5 seconds.
 2. **No-prior-episode test** — does not require earlier posts.
 3. **Value-without-me test** — replacing "I" with a stranger's name still works.
@@ -220,18 +192,18 @@ If any check fails, fix the draft, not the gate.
 - **ALWAYS** put `Note:` closer as the ABSOLUTE LAST LINE of the body. No text after it. Nothing.
 - **ALWAYS** match the voice register of the closest corpus example.
 - **ALWAYS** self-check the 14 soft gates before saving.
-- **ALWAYS** write the `## copywriter` section, `formats:`, `draft_count:` to the brief. Missing these blocks MD.
+- **ALWAYS** write the `## copywriter` section, `formats:`, `draft_count:` to the brief. Missing these blocks the pipeline.
 - **ALWAYS** write complete body content — X needs 3-7 lines, LinkedIn needs 5-15 lines, Blog needs 300+ words.
-- **NEVER** auto-pick platforms. Always ask via `question` tool.
+- **NEVER** auto-pick platforms. Always ask via the `question` tool.
 
 ## Failure modes
 
-- **`## strategist` missing** → return `error: no strategist section`; MD reverts to COMPILE.
+- **`## strategist` missing** → write `error: no strategist section`, exit to IDLE.
 - **No templates for platform** → skip that platform.
 - **Corpus has no matching example** → use platform template's "structure" section only.
 - **Frontmatter missing required field** → fix in place.
-- **Soft gate fails repeatedly** → return `error: voice register unclear for <archetype>+<axis>`.
-- **User says `hold` at format wizard** → return with no drafts (empty `## copywriter.drafts`).
+- **Soft gate fails repeatedly** → write `error: voice register unclear for <archetype>+<axis>`, exit to IDLE.
+- **User says `hold` at format wizard** → return with no drafts (empty `## copywriter.drafts`), set `state: IDLE`, exit the pipeline.
 
 ## The platform templates
 
