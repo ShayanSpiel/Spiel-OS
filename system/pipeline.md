@@ -1,6 +1,6 @@
 # Pipeline
 
-The content pipeline is a 10-state machine, executed by **MD** orchestrating 3 subagents (designer, editor, publisher) for tool-heavy work and running 5 inline steps (researcher, strategist, copywriter, analyst) in its own conversation.
+The content pipeline is a 10-state machine, executed by **one LLM agent** (the `team/post.md` slash command) with no subagents and no nesting. The LLM runs all 10 steps inline in your chat.
 
 ```
 IDLE → SESSION_CAPTURE → COMPILE → SELECT → DRAFTING → BANNER → GATE_CHECK → PUBLISHING → ANALYZING_POST → COMPLETE_POST → IDLE
@@ -8,63 +8,99 @@ IDLE → SESSION_CAPTURE → COMPILE → SELECT → DRAFTING → BANNER → GATE
 
 ## The 10 states
 
-| # | State | Owner | Output | Where the work runs |
-|---|---|---|---|---|
-| 0 | IDLE | MD | empty brief | inline in MD |
-| 1 | SESSION_CAPTURE | MD (inline via `researcher.md`) | `## researcher` | inline in MD + `tools/researcher.py` |
-| 2 | COMPILE | MD (inline via `strategist.md`) | `## strategist.core_insight` + 6 axes | inline in MD |
-| 3 | SELECT | MD (inline via `strategist.md`) | `## strategist.template_selection` | inline in MD |
-| 4 | DRAFTING | MD (inline via `copywriter.md`) | `## copywriter` + draft files + `formats` | inline in MD + `question` tool |
-| 5 | BANNER | **@designer subagent** | `## designer` + PNG files | `task(designer)` + `tools/designer.py` |
-| 6 | GATE_CHECK | **@editor subagent** | `## editor.verdict` | `task(editor)` + `tools/editor.py` |
-| 7 | PUBLISHING | **@publisher subagent** | `## publisher` + posted/rejected files | `task(publisher)` + `tools/publisher/*` |
-| 8 | ANALYZING_POST | MD (inline via `analyst.md`) | `## analyst` | inline in MD + `tools/analyst.py` |
-| 9 | COMPLETE_POST | MD | `.brief.md` archived | inline in MD |
+| # | State | What happens | Tools used |
+|---|---|---|---|
+| 0 | IDLE | Awaiting `/post` | — |
+| 1 | SESSION_CAPTURE | Capture source (session from opencode DB or topic text). Classify. | `tools/researcher.py` (bash) |
+| 2 | COMPILE | Run 8-step (session) or 6-question (topic) compiler. Extract 6 axis meanings + 1 core insight. | read `system/prompts/compiler.md` |
+| 3 | SELECT | Rank templates from registry. Top 3 per platform. | read `templates/registry/viral-templates.yaml` |
+| 4 | DRAFTING | Ask user for platforms. Write drafts with 15-field frontmatter. Apply 14 soft-gate self-check. | `question` tool, `write` tool |
+| 5 | BANNER | Render PNG banners. | `tools/designer.py` (bash) |
+| 6 | GATE_CHECK | Run 15 mechanical gates. Apply 14 soft review. | `tools/editor.py` (bash) |
+| 7 | PUBLISHING | Per-draft p/h/r wizard. Dispatch via Buffer / direct API / GH Pages. Archive. | `question` tool, `tools/publisher/*` (bash) |
+| 8 | ANALYZING_POST | Pull engagement. Update perf ledger. Re-rank templates. | `tools/analyst.py` (bash) |
+| 9 | COMPLETE_POST | Archive brief. Back to IDLE. | bash mv |
 
+## Architecture
+
+**One agent. One prompt. One conversation.**
+
+When you type `/post`:
+1. The IDE runs the `team/post.md` slash command in your chat.
+2. The slash command's body is the full 10-step procedure.
+3. The LLM executes each step inline using `bash`, `read`, `write`, and `question` tools.
+4. No `task()` calls, no subagent dispatch, no nested contexts.
+
+You see every step in your chat. There is exactly one conversation.
+
+## The handoff file: `.brief.md`
+
+One `.brief.md` per `/post` run. The LLM writes to it via the `write` tool at each step. Archived to `content/.brief/YYYY-MM-DD-NNN.md` on Step 10.
+
+```yaml
+---
+run_id: 2026-06-22-001
+state: GATE_CHECK
+scenario: session
+source: { kind: session, file: content/sessions/2026-06-22-session-...md }
+formats: [x, linkedin, blog]
+draft_count: 2
 ---
 
-## Hand-off graph
+## researcher
+classification: { archetype, funnel, icp_layer, vertical }
+evidence: { session, topic_text, key_facts }
 
+## strategist
+core_insight: ...
+meanings: { systemic, behavioral, philosophical, contrarian, leverage, human }
+selected_meaning: { axis, rationale }
+template_selection: { x: [...], linkedin: [...], blog: [...] }
+
+## copywriter
+drafts: [{ file, template, hook, archetype, axis, funnel, voice_register, self_check }]
+
+## editor
+gates: { mechanical: ..., soft: ..., verdict: pass|warn|fail }
+
+## designer
+banners: [{ draft, banner, icon, template, size_bytes }]
+
+## publisher
+publish_decisions: [{ draft, decision }]
+posted: [{ draft, post_ids, urls, archive }]
+held: []
+rejected: []
+failed: []
+
+## analyst
+engagement: [{ draft, views, likes, replies, reposts, pulled_at }]
+perf_delta: { ... }
+template_rerank: { ... }
+
+## state_history
+- 2026-06-22T18:08:00Z IDLE
+- ...
 ```
-MD (inline — runs in MD's visible conversation, 1 nesting level)
-│
-├── Step 2: read system/prompts/researcher.md → run tools/researcher.py → write ## researcher
-├── Step 3: read system/prompts/strategist.md + compiler.md → run compiler → write ## strategist
-├── Step 4: read templates/registry/viral-templates.yaml → rank → write template_selection
-├── Step 5: read system/prompts/copywriter.md + format-wizard.md → question tool → write drafts + ## copywriter
-│
-├── Step 6: task(designer) → banner render → write ## designer
-├── Step 7: task(editor) → gate checks → write ## editor
-├── Step 8: task(publisher) → p/h/r wizard + dispatch → write ## publisher
-│
-├── Step 9: read system/prompts/analyst.md → run tools/analyst.py → write ## analyst
-└── Step 10: archive brief → IDLE
-```
-
-Only designer, editor, and publisher run as separate subagents (via `task()`). Everything else runs inline in MD's conversation — fixing both session capture (MD can read the opencode DB) and UX (user sees progress without clicking into nested panels).
-
----
 
 ## File I/O per state
 
 | State | Reads | Writes |
 |---|---|---|
-| IDLE | (nothing) | `content/.brief.md` (skeleton) |
-| SESSION_CAPTURE | `content/sessions/*.md` OR `topic text` | `## researcher` |
+| IDLE | (nothing) | `content/.brief.md` (skeleton or reset) |
+| SESSION_CAPTURE | `content/sessions/*.md` OR `topic text` | `## researcher` in brief |
 | COMPILE | `## researcher`, `system/prompts/compiler.md`, `strategy/icp.md` | `## strategist.core_insight` + `## strategist.meanings` |
 | SELECT | `## strategist`, `templates/registry/viral-templates.yaml` | `## strategist.template_selection` |
 | DRAFTING | `## strategist`, `## researcher`, `strategy/voice.md`, `strategy/corpus.md`, `templates/<platform>.md` | `## copywriter` + `content/queue/*.md` + `formats` |
-| BANNER | `## copywriter` | `## designer` + `assets/banners/*.png` + `banner:` frontmatter |
+| BANNER | drafts in `content/queue/` | `## designer` + `assets/banners/*.png` + `banner:` frontmatter |
 | GATE_CHECK | drafts in `content/queue/` | `## editor` + `gates:` frontmatter |
 | PUBLISHING | drafts in `content/queue/`, `.env` | `## publisher` + `content/posted/*.md` + `content/rejected/*.md` |
 | ANALYZING_POST | `## publisher.posted` | `## analyst` + `templates/registry/performance.json` |
 | COMPLETE_POST | `content/.brief.md` | rename to `content/.brief/YYYY-MM-DD-NNN.md` |
 
----
+## The deterministic tools
 
-## Where the deterministic parts run
-
-- `tools/researcher.py` — synthesizes a session log from the opencode DB (5s SQLite timeout to prevent hangs) + classifies.
+- `tools/researcher.py` — synthesizes a session log from the opencode DB (5s SQLite timeout) + classifies.
 - `tools/designer.py` — renders PNG banners (Playwright + system Chrome).
 - `tools/editor.py` — runs the 15 mechanical gates against each draft.
 - `tools/publisher/buffer.py` — multi-platform fan-out (X + LinkedIn + Threads).

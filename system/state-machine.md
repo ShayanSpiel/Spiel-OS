@@ -2,7 +2,7 @@
 
 The single source of truth for the content loop. **MD reads this on every step.**
 
-The state machine is a markdown table. There is no Python orchestrator. MD (the LLM agent in `team/md.md`) reads the table, picks the next state, and runs the work for that state. **5 states run inline in MD's conversation** (SESSION_CAPTURE, COMPILE, SELECT, DRAFTING, ANALYZING_POST) by reading reference docs in `system/prompts/`. **3 states delegate via `task()` to subagents** (BANNER → designer, GATE_CHECK → editor, PUBLISHING → publisher). The previous state output is the next state input. The pipeline is step-chained within MD.
+The state machine is a markdown table. There is no Python orchestrator. The LLM running the `team/post.md` slash command reads the table, picks the next state, and runs the work for that state inline in your chat. All 10 states run inline — no subagents, no delegation, no nesting. The previous state output is the next state input. The pipeline is step-chained within the single conversation.
 
 ---
 

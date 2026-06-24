@@ -70,34 +70,31 @@ def test_state_machine() -> None:
 
 
 def test_team_files() -> None:
-    print("\n[2] Role files present + valid frontmatter (3 subagents in team/, 5 reference docs in system/prompts/)")
-    # 3 subagents in team/ — these are installed as agents
+    print("\n[2] Single slash command: team/post.md (the only agent)")
+    # The only agent in the system is the post.md slash command
     team = ROOT / "team"
-    subagent_roles = ["md", "editor", "designer", "publisher"]
-    for r in subagent_roles:
-        f = team / f"{r}.md"
-        check(f"team/{r}.md exists (subagent)", f.exists())
-        if f.exists():
-            text = f.read_text()
-            check(f"team/{r}.md has frontmatter", text.startswith("---"))
-            check(f"team/{r}.md has description", "description:" in text[:500])
-            check(f"team/{r}.md has role_in_pipeline", "role_in_pipeline:" in text)
-            check(f"team/{r}.md has hard rules", "## Hard rules" in text)
+    f = team / "post.md"
+    check(f"team/post.md exists (the only agent)", f.exists())
+    if f.exists():
+        text = f.read_text()
+        check("team/post.md has frontmatter", text.startswith("---"))
+        check("team/post.md has description", "description:" in text[:500])
+        check("team/post.md has 10-step procedure", "Step 1" in text and "Step 10" in text)
+        check("team/post.md has hard rules", "## Hard rules" in text)
+        # team/post.md should NOT have permission/task (no subagents)
+        check("team/post.md has no task() (no subagents)", "task(" not in text or "Never use" in text)
 
-    # 5 reference docs in system/prompts/ — these are NOT agents, just reference docs
+    # team/ should contain ONLY post.md and README.md
+    team_files = sorted([f.name for f in team.iterdir() if f.is_file() and f.name != "README.md"])
+    check(f"team/ has only post.md (and README.md)", team_files == ["post.md"],
+          f"found: {team_files}")
+
+    # system/prompts/ should contain only the 4 reference docs (identity, compiler, leak-guard, wizards)
     prompts = ROOT / "system" / "prompts"
-    ref_doc_roles = ["researcher", "strategist", "copywriter", "analyst", "format-wizard"]
-    for r in ref_doc_roles:
-        f = prompts / f"{r}.md"
-        check(f"system/prompts/{r}.md exists (reference doc)", f.exists())
-        if f.exists():
-            text = f.read_text()
-            check(f"system/prompts/{r}.md has frontmatter", text.startswith("---"))
-            check(f"system/prompts/{r}.md has description", "description:" in text[:500])
-            check(f"system/prompts/{r}.md has hard rules", "## Hard rules" in text)
-            # Reference docs should NOT have role_in_pipeline (that's for subagents)
-            check(f"system/prompts/{r}.md is NOT a subagent (no role_in_pipeline)",
-                  "role_in_pipeline:" not in text)
+    expected_prompts = ["compiler.md", "identity.md", "leak-guard.md", "wizards.md"]
+    prompt_files = sorted([f.name for f in prompts.iterdir() if f.is_file()])
+    check(f"system/prompts/ has only the 4 expected files", prompt_files == expected_prompts,
+          f"found: {prompt_files}")
 
 
 def test_editor_runs() -> None:
@@ -231,18 +228,15 @@ def test_sync_adapters() -> None:
         capture_output=True, text=True,
     )
     check("sync_adapters.py exits 0", r.returncode == 0, f"stderr: {r.stderr}")
-    # Check the adapters exist (v3: 3 subagents only — designer, editor, publisher.
-    # Researcher/strategist/copywriter/analyst are reference docs in system/prompts/,
-    # NOT agents, so they don't get adapter files.)
+    # Check the adapters exist (v4: only the post slash command.
+    # No subagents — designer/editor/publisher/researcher/strategist/copywriter/analyst
+    # are all inlined into post.md. No adapter files for them.)
     for path in [
-        "adapters/opencode/agents/md.md",
-        "adapters/opencode/agents/designer.md",
-        "adapters/opencode/agents/editor.md",
-        "adapters/opencode/agents/publisher.md",
-        "adapters/claude/agents/md.md",
-        "adapters/cursor/commands/md.md",
+        "adapters/opencode/commands/post.md",
+        "adapters/claude/commands/post.md",
+        "adapters/cursor/commands/post.md",
         "adapters/mcp/server.json",
-        # Skills (user skills, no role stubs)
+        # Skills (user skills)
         "skills/icp_simulation/SKILL.md",
         "skills/format_wizard/SKILL.md",
         "skills/publish_wizard/SKILL.md",

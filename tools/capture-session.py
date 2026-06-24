@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """capture-session.py — Capture the CURRENT session and save it as the canonical log.
 
-The Researcher reference doc (`system/prompts/researcher.md`) describes this tool
-as a fallback path for when the opencode DB synthesis fails. The primary path is
-`tools/researcher.py synthesize-session` (with a 5s SQLite timeout). Use this tool
-only when you have a pre-written transcript file or want to write a clean
-transcript directly from the LLM's context.
+The pipeline's session capture (in `team/post.md` Step 2) uses
+`tools/researcher.py synthesize-session` as the primary path (5s SQLite timeout
+when reading the opencode DB). This tool is a fallback for when the LLM has the
+full conversation in context and wants to write a clean transcript directly.
 
 The tool writes a single canonical file:
 
