@@ -206,13 +206,11 @@ _SPielos_SKIP_DIRS="team skills strategy content archive"
 _SPielos_SKIP_FILES=".env system/brand.md system/brand.json"
 
 _update_via_tarball() {
-SPIELOS_REPO="${SPIELOS_REPO:-ShayanSpiel/Spiel-OS}"
+  SPIELOS_REPO="${SPIELOS_REPO:-ShayanSpiel/Spiel-OS}"
   local tarball="${TARBALL_URL:-https://github.com/$SPIELOS_REPO/archive/refs/heads/main.tar.gz}"
   local tmpdir
   tmpdir=$(mktemp -d) || { echo "  ⚠ mktemp failed" >&2; return 1; }
 
-  # Ensure tmpdir is cleaned up even if set -e kills the script midway
-  # (e.g. Python overlay error, curl failure, etc.)
   _spiel_cleanup_tmp() { rm -rf "$tmpdir"; }
   trap _spiel_cleanup_tmp EXIT
 
@@ -222,13 +220,28 @@ SPIELOS_REPO="${SPIELOS_REPO:-ShayanSpiel/Spiel-OS}"
   fi
 
   # Overlay files from $tmpdir onto $VAULT, skipping user data dirs/files.
+  # Reports each changed file individually.
   (cd "$VAULT" && python3 - <<PYEOF
-import os, shutil
+import os, shutil, hashlib
+
+def file_hash(path):
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
 src = "$tmpdir"
 dst = "$VAULT"
 skip_dirs  = set("${_SPielos_SKIP_DIRS}".split())
 skip_files = set("${_SPielos_SKIP_FILES}".split())
-copied = 0
+updated = []
+added = []
+skipped = 0
+
 for root, dirs, files in os.walk(src):
     rel = os.path.relpath(root, src)
     parts = rel.split(os.sep) if rel != "." else []
@@ -240,10 +253,30 @@ for root, dirs, files in os.walk(src):
             continue
         sp = os.path.join(root, f)
         dp = os.path.join(dst, rel_file)
+        new_hash = file_hash(sp)
+        old_hash = file_hash(dp)
+        if new_hash == old_hash:
+            skipped += 1
+            continue
         os.makedirs(os.path.dirname(dp), exist_ok=True)
         shutil.copy2(sp, dp)
-        copied += 1
-print(f"  → tarball overlay: {copied} files updated (user data preserved)")
+        if old_hash is None:
+            added.append(rel_file)
+        else:
+            updated.append(rel_file)
+
+if updated:
+    print(f"  Updated ({len(updated)}):")
+    for f in sorted(updated):
+        print(f"    ~ {f}")
+if added:
+    print(f"  Added ({len(added)}):")
+    for f in sorted(added):
+        print(f"    + {f}")
+if not updated and not added:
+    print("  Already up to date.")
+else:
+    print(f"\n  {len(updated)} updated, {len(added)} added, {skipped} unchanged (user data preserved)")
 PYEOF
 )
 
@@ -403,7 +436,17 @@ case "${1:-}" in
 
     if [[ -d "$VAULT/.git" ]] && command -v git >/dev/null 2>&1; then
       echo "  → git pull origin main --ff-only"
-      if (cd "$VAULT" && git pull origin main --ff-only 2>&1 | sed 's/^/    /'); then
+      local pull_output
+      if pull_output=$(cd "$VAULT" && git pull origin main --ff-only 2>&1); then
+        if echo "$pull_output" | grep -q "Already up to date"; then
+          echo "  Already up to date."
+        else
+          echo "  Pulled changes:"
+          echo "$pull_output" | sed 's/^/    /'
+          echo ""
+          echo "  Files changed since last update:"
+          cd "$VAULT" && git diff --stat HEAD@{1} HEAD 2>/dev/null | sed 's/^/    /' || true
+        fi
         echo "  ✓ tool sources updated"
       else
         echo "  ⚠ git pull failed; falling back to tarball overlay"
@@ -427,7 +470,8 @@ case "${1:-}" in
     fi
 
     echo ""
-    echo "  ✓ Update complete."
+    echo "  ─────────────────────────────────────────"
+    echo "  ✓ Update complete. Vault: $VAULT"
     echo "    To re-run setup wizard:  spiel init"
     echo ""
     ;;
