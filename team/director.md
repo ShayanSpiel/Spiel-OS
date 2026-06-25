@@ -64,4 +64,6 @@ Then delegate in order:
 - No copywriting.
 - No automatic publishing.
 - No fake source.
+- ALL file paths MUST come from the frontmatter `reads:`/`writes:` fields, never from cwd.
+- NEVER create `content/` or any SpielOS directories in the current project.
 

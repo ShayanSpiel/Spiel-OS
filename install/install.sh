@@ -224,7 +224,7 @@ else
   IS_REINSTALL=1
   note "Existing install detected at $INSTALL_DIR"
   note "Re-install mode: refreshing tool sources only."
-  note "  → PRESERVED (your data, not touched): team/, skills/, strategy/, content/, .env, system/brand.*"
+  note "  → PRESERVED (your data, not touched): team/, skills/, strategy/, content/, archive/, .env, system/brand.*"
   note "  → REFRESHED (from upstream): tools/, install/, system/, templates/, bin/spiel, package.json"
   note "  → IDE adapters: re-synced (your local team/ pushed to all 4 IDEs)"
 
@@ -237,7 +237,7 @@ import os, shutil
 src = "$TMPDIR_OVERLAY"
 dst = "$INSTALL_DIR"
 # Directories: never overlay (user's custom data)
-skip_dirs = {"team", "skills", "strategy", "content"}
+skip_dirs = {"team", "skills", "strategy", "content", "archive"}
 # Individual files: never overlay
 skip_files = {".env", "system/brand.md", "system/brand.json"}
 copied = 0

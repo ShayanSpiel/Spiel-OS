@@ -202,7 +202,7 @@ VAULT=$(_resolve_vault) || exit 1
 
 # Directories and files that update must NEVER overwrite (user data).
 # These match what install.sh preserves during re-install.
-_SPielos_SKIP_DIRS="team skills strategy content"
+_SPielos_SKIP_DIRS="team skills strategy content archive"
 _SPielos_SKIP_FILES=".env system/brand.md system/brand.json"
 
 _update_via_tarball() {
@@ -394,11 +394,11 @@ case "${1:-}" in
     esac
 
     # Pull the latest tool sources, then sync to IDEs.
-    # Preserves your custom team/, skills/, strategy/, content/, .env, brand.*
+    # Preserves your custom team/, skills/, strategy/, content/, archive/, .env, brand.*
 
     echo ""
     echo "  Updating SpielOS vault at $VAULT"
-    echo "  (preserves: team/, skills/, strategy/, content/, .env, system/brand.*)"
+    echo "  (preserves: team/, skills/, strategy/, content/, archive/, .env, system/brand.*)"
     echo ""
 
     if [[ -d "$VAULT/.git" ]] && command -v git >/dev/null 2>&1; then
